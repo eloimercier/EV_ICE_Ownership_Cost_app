@@ -5,35 +5,44 @@ ui <- dashboardPage(
 ############################ HEADER ##########################
 ##############################################################
 
-  dashboardHeader(title = "EV List and Comparator"),
+    dashboardHeader(title = "EV List and Comparator"),
 
 ##############################################################
 ########################### SIDEBAR ##########################
 ##############################################################
 
-  dashboardSidebar(
-    sidebarMenu(
-        menuItem("Setup", tabName = "setup", icon = icon("circle-info")),
-        menuItem("Car List", tabName = "carlist", icon = icon("list")),
-        menuItem("Compare", tabName = "compare", icon = icon("chart-line")),
-        menuItem("Parameters", tabName = "params", icon = icon("database"))
-    )
-  ), #end dashboardSidebar
+    dashboardSidebar(
+        sidebarMenu(
+            menuItem("Setup", tabName = "setup", icon = icon("circle-info")),
+            menuItem("Car List", tabName = "carlist", icon = icon("list")),
+            menuItem("Compare", tabName = "compare", icon = icon("chart-line")),
+            menuItem("Parameters", tabName = "params", icon = icon("database"))
+        )
+    ), #end dashboardSidebar
 
 ##############################################################
 ############################ BODY ############################
 ##############################################################
 
-  dashboardBody(
+    dashboardBody(
+        tabItems(
+############################
+#SETUP
+############################
+        tabItem(tabName = "setup",
+            uiOutput("setupUI"),
+            uiOutput("rebate_info")
+        ),
 
 ############################
 #CAR LIST
 ############################
-  tabItem(tabName = "carlist",
-    DTOutput("car_table")
-  )
 
+        tabItem(tabName = "carlist",
+            DTOutput("car_table")
+        )
 
-  ) #end dashboardBody
+        ) #end tabItems
+    ) #end dashboardBody
 
 )
