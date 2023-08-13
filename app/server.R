@@ -1,6 +1,7 @@
 
 server <- function(input, output, session) {
 
+  verbose <- TRUE
 ##############################################################
 ######################### READ DATA ##########################
 ##############################################################
@@ -57,8 +58,17 @@ observe({
     dataVariable$tax <- as.numeric(dataTables$taxes["Federal",1]) + as.numeric(dataTables$taxes[input$region,1])
     dataVariable$gas_rate  <- as.numeric(dataTables$gas[input$region,1])
     dataVariable$electricity_rate <- as.numeric(dataTables$electricity[input$region,1])
+    
+    if(verbose){
+      print(paste0("federal_max_msrp: ", dataVariable$federal_max_msrp))
+      print(paste0("region_max_msrp: ", dataVariable$region_max_msrp))
+      print(paste0("federal_rebate: ", dataVariable$federal_rebate))
+      print(paste0("region_rebate: ", dataVariable$region_rebate))
+      print("***********")
+    }
   }
   
+
 })
 
 
@@ -97,13 +107,26 @@ output$rebate_info <- renderUI({
 output$car_table <- renderDT({
 	car_list <- dataTables$car_data
 	car_list <- car_list[,-which(colnames(car_list)=="Link")]
-	delivery_fees <- sapply(car_list$Maker, function(x){dataTables$delivery_fees[x,1]})
-	delivery_fees[is.na(delivery_fees)] <- 0
-	car_list$after_tax_fees <- (car_list[,"MSRP..CAD."] + delivery_fees) * (1+dataTables$taxes["Federal tax",]+dataTables$taxes[input$region,1]) #(msrp + delivery) * taxes
-	car_list$after_rebates <- car_list$after_tax_fees - ifelse(car_list$Engine,
-	                                                           car_list$rebates ,0)
+	car_list$delivery_fees <- sapply(car_list$Maker, function(x){dataTables$delivery_fees[x,1]})
+	car_list$delivery_fees[is.na(car_list$delivery_fees)] <- 0
+	car_list$after_tax_fees <- (car_list[,"MSRP..CAD."] + car_list$delivery_fees) * (1+dataVariable$tax) #(msrp + delivery) * taxes
+
+	car_list$vehicle_federal_rebate <- ifelse(car_list[,"MSRP..CAD."]<=dataVariable$federal_max_msrp & car_list$Engine=="BEV", dataVariable$federal_rebate ,0)
+	car_list$vehicle_region_rebate <- ifelse(car_list[,"MSRP..CAD."]<=dataVariable$region_max_msrp & car_list$Engine=="BEV", dataVariable$region_rebate ,0)
+	car_list$after_rebates <- car_list$after_tax_fees - car_list$vehicle_federal_rebate - car_list$vehicle_region_rebate
+	car_list <- car_list[order(car_list$after_tax_fees,decreasing = FALSE),]
+	
+	if(is.null(input$region) | identical(input$region,'')){
+	  car_list$after_tax_fees <- car_list$after_rebates<- "-"
+	}
+	
+	colnames(car_list) <- c("Maker","Model", "Trim", "Engine", "MSRP", "Delivery fees", "After tax and fees", "Federal rebate", "Region rebate", "After rebates")
+	colnames(car_list)[9] <- paste0(dataVariable$region," rebate")
 	car_list
-}, selection = 'single')
+	
+}, selection = 'single', rownames=FALSE, extensions = 'Buttons', options = list(dom = 'Bfrtip', buttons = I('colvis'), columnDefs = list(
+  list(targets = c(6,8,9), visible = FALSE)
+)))
 
 
 
