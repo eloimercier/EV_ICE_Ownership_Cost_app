@@ -130,4 +130,73 @@ output$car_table <- renderDT({
 
 
 
+##############################################################
+######################### PARAMETERS #########################
+##############################################################
+
+#### REBATES #### 
+output$rebate_table <- renderDT({
+  rebate_table <- dataTables$rebates
+  rebate_table <- rebate_table[-grep("Source", rebate_table$Region),,drop=FALSE]
+  colnames(rebate_table) <- c("Region", "Maximum Amount", "If MSRP below...", "Condition")
+  rebate_table
+}, selection = 'single', rownames=FALSE)
+
+output$rebate_source <- renderUI({
+  rebate_table <- dataTables$rebates
+  rebate_source <- rebate_table[grep("Source", rebate_table$Region),,drop=FALSE]
+  HTML(paste0('<b>', '<a href=',rebate_source[,2],'>',rebate_source[,1],'</a>','</b>'))
+})
+
+#### TAXES #### 
+  output$tax_table <- renderDT({
+    tax_table <- dataTables$taxes
+    tax_table <- tax_table[-grep("Source", rownames(tax_table)),,drop=FALSE]
+    tax_table$Region <- rownames(tax_table)
+    tax_table[,2:1]
+  }, selection = 'single', rownames=FALSE)
+  
+  output$tax_source <- renderUI({
+    tax_table <- dataTables$taxes
+    tax_source <- tax_table[grep("Source", rownames(tax_table)),,drop=FALSE]
+    HTML(paste0('<b>', '<a href=',tax_source[,1],'>',rownames(tax_source),'</a>','</b>'))
+  })
+  
+  #### GAS #### 
+  output$gas_table <- renderDT({
+    gas_table <- dataTables$gas
+    gas_table <- gas_table[-grep("Source", rownames(gas_table)),,drop=FALSE]
+    gas_table$Region <- rownames(gas_table)
+    gas_table[,2:1]
+  }, selection = 'single', rownames=FALSE)
+  
+  output$gas_source <- renderUI({
+    gas_table <- dataTables$gas
+    gas_source <- gas_table[grep("Source", rownames(gas_table)),,drop=FALSE]
+    HTML(paste0('<b>', '<a href=',gas_source[,1],'>',rownames(gas_source),'</a>','</b>'))
+  })
+  
+  #### ELECTRICITY #### 
+  output$electricity_table <- renderDT({
+    electricity_table <- dataTables$electricity
+    electricity_table <- electricity_table[-grep("Source", rownames(electricity_table)),,drop=FALSE]
+    electricity_table$Region <- rownames(electricity_table)
+    electricity_table[,2:1]
+  }, selection = 'single', rownames=FALSE)
+  
+  output$electricity_source <- renderUI({
+    electricity_table <- dataTables$electricity
+    electricity_source <- electricity_table[grep("Source", rownames(electricity_table)),,drop=FALSE]
+    HTML(paste0('<b>', '<a href=',electricity_source[,1],'>',rownames(electricity_source),'</a>','</b>'))
+  })
+  
+  #### DELIVERY FEES #### 
+  
+  output$delivery_fees_table <- renderDT({
+    delivery_fees_table <- dataTables$delivery_fees
+    delivery_fees_table$Region <- rownames(delivery_fees_table)
+    delivery_fees_table[,2:1]
+  }, selection = 'single', rownames=FALSE)
+  
+
 }

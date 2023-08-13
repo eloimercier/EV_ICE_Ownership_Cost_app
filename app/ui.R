@@ -39,8 +39,27 @@ ui <- dashboardPage(
 ############################
 
         tabItem(tabName = "carlist",
-            DTOutput("car_table")
+           DTOutput("car_table")
+        ),
+
+############################
+#PARAMETERS
+############################
+
+        tabItem(tabName = "params",
+                
+                tabsetPanel(
+                  tabPanel("Rebates",  DTOutput("rebate_table"), uiOutput("rebate_source")),
+                  tabPanel("Taxes",  DTOutput("tax_table"), uiOutput("tax_source")),
+                  tabPanel("Gas",  DTOutput("gas_table"), uiOutput("gas_source")),
+                  tabPanel("Electricity",  DTOutput("electricity_table"), uiOutput("electricity_source")),
+                  tabPanel("Delivery Fees",  DTOutput("delivery_fees_table"))
+                )                
+                
+                
         )
+
+
 
         ) #end tabItems
     ) #end dashboardBody
