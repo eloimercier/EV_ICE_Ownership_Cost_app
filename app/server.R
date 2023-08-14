@@ -1,7 +1,14 @@
 
 server <- function(input, output, session) {
 
-  verbose <- TRUE
+  verbose <- FALSE
+  
+#TODO:
+  #manual overide of tax, gas, electricity rate + add message in top right corner that it's using cusom values
+  #message in top right corner if no province selected
+  #change Regions to Provinces
+  #add walkthrough
+  
 ##############################################################
 ######################### READ DATA ##########################
 ##############################################################
@@ -21,7 +28,12 @@ server <- function(input, output, session) {
 ##############################################################
 ######################### SETUP ##########################
 ##############################################################
-
+	
+output$appInfoUI <- renderUI({
+  #link to github page
+  tags$a(img(src="https://img.icons8.com/?size=512&id=62856&format=png",  width="48", height="48"), href="https://github.com/eloimercier/EV_app")
+  })
+	
 output$setupUI <- renderUI({
 	region_list <- unique(dataTables$rebates[,1])
 	region_list <- region_list[-c(which(region_list=="Federal"), grep("Source", region_list))]
@@ -103,7 +115,6 @@ output$rebate_info <- renderUI({
 ######################### CAR LIST ##########################
 ##############################################################
 
-
 output$car_table <- renderDT({
 	car_list <- dataTables$car_data
 	car_list <- car_list[,-which(colnames(car_list)=="Link")]
@@ -127,6 +138,53 @@ output$car_table <- renderDT({
 }, selection = 'single', rownames=FALSE, extensions = 'Buttons', options = list(dom = 'Bfrtip', buttons = I('colvis'), columnDefs = list(
   list(targets = c(6,8,9), visible = FALSE)
 )))
+
+##############################################################
+######################### COMPARISON #########################
+##############################################################
+
+#tabPanel("Model Variables",  DTOutput("model_table")),
+#tabPanel("Comparison",  DTOutput("comparison_table"), plotOutput("comparison_plot"))
+
+output$modelVariableUI <- renderUI({
+ 
+  tagList(
+    numericInput("yearly_km", "Km driven yearly:", 10000, min = 1, max = 50000, step=1000),
+    numericInput("keep_years", "How many years will you keep the car for:", 10, min = 1, max = 20, step=1),
+    actionButton("confimrVariableBttn", "Submit")
+  )
+})
+
+
+#### MODEL VARIABLES #### 
+output$model_variable_info <- renderUI({
+  HTML(paste0('<b>','Here are the defaut parameters used by the model. It might not correspond to your scenari. You cna use custom values by double clicking on a value to edit.','</b>'))
+})
+
+output$model_variable_table <- renderDT({
+  
+  
+  default_variables <- c("Yearly km"=12000,
+    "Gas ($/L)"=dataVariable$gas_rate,
+    "Electricity ($/kWh)"=dataVariable$electricity_rate,
+    "Keep car for X years"=10,
+    "ICE L/100km"=8.0,
+    "ICE maintenance (yearly)"=450,
+    "BEV kWh/100km"=15,
+    "BEV maintenance (yearly)"=250,
+    "Depreciation rate after X years"=0.13)
+  
+  
+  model_variable_table <- data.frame(Parameters=names(default_variables),
+                                     Values=default_variables
+                                     )
+  model_variable_table
+  
+  
+}, selection = 'single', rownames=FALSE, editable=TRUE)
+
+
+
 
 
 
