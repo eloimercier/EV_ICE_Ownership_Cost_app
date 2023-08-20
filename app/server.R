@@ -29,16 +29,14 @@ server <- function(input, output, session) {
 ######################### SETUP ##########################
 ##############################################################
 
-# output$appInfoUI <- renderUI({
-#   tags$li(class = "dropdown", 
-#             actionButton("preview", "Preview")
-#   )
-# })
-	
 
 observeEvent(input$info, {
-    # Show a modal when the button is pressed
-    shinyalert("Oops!", "Something went wrong.", type = "info")
+    version <- read.table("../VERSION")[1,1]
+    print(version)
+    shinyalert("EV Comparator App", HTML(paste0(version,"<br><br>
+      This document focuses on affordable Electric Vehicles (EVs) available in Canada. It is not meant to encompass all EVs on the market. A few Internal Combustion Engine (ICE) vehicles have been included to the list for comparison.<br><br>
+      Prices are in CAD.<br><br>
+      <i>The information in this document are provided for information only with no guarantee of accuracy</i>")), type = "info", html=TRUE) 
 })
 
 output$githubLink <- renderUI({
