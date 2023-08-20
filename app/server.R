@@ -28,10 +28,24 @@ server <- function(input, output, session) {
 ##############################################################
 ######################### SETUP ##########################
 ##############################################################
+
+# output$appInfoUI <- renderUI({
+#   tags$li(class = "dropdown", 
+#             actionButton("preview", "Preview")
+#   )
+# })
 	
-output$appInfoUI <- renderUI({
+
+observeEvent(input$info, {
+    # Show a modal when the button is pressed
+    shinyalert("Oops!", "Something went wrong.", type = "info")
+})
+
+output$githubLink <- renderUI({
   #link to github page
-  tags$a(img(src="https://img.icons8.com/?size=512&id=62856&format=png",  width="48", height="48"), href="https://github.com/eloimercier/EV_app")
+  tags$li(class = "dropdown",
+      tags$a(img(src="https://img.icons8.com/?size=512&id=62856&format=png",  width="48", height="48"), href="https://github.com/eloimercier/EV_app")
+  )
   })
 	
 output$setupUI <- renderUI({

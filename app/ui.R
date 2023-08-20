@@ -1,18 +1,25 @@
 
 ui <- dashboardPage(skin = "green",
-
+                    
 ##############################################################
 ############################ HEADER ##########################
 ##############################################################
 
-    dashboardHeader(title = "EV List",
-                    uiOutput("appInfoUI")),
+    dashboardHeader(title = "EV List and Comparator", titleWidth = 300,
+                    tags$li(class = "dropdown",tags$a(
+                            actionButton("info", "App Info",  style="color: black; background-color: transparent; border-color: transparent; margin:0px 0px 0px 0px; padding:0px 0px 0px 0px; font-size:100%"),  style=" margin:0px 0px 0px 0px; padding:13px 10px 10px 10px; font-size:100%"
+                        )),
+                    tags$li(class = "dropdown", tags$a(
+                        img(src="https://img.icons8.com/?size=512&id=62856&format=png",  width="30", height="30"), href = "https://github.com/eloimercier/EV_app", style="margin:0px 0px 0px 0px; padding:10px 10px 10px 10px;"
+                        ))
+),
 
 ##############################################################
 ########################### SIDEBAR ##########################
 ##############################################################
 
     dashboardSidebar(
+      tags$style("@import url(https://use.fontawesome.com/releases/v5.7.2/css/all.css);"), #to load all fonts
         sidebarMenu(
             menuItem("Setup", tabName = "setup", icon = icon("circle-info")),
             menuItem("Car List", tabName = "carlist", icon = icon("list")),
@@ -26,6 +33,15 @@ ui <- dashboardPage(skin = "green",
 ##############################################################
 
     dashboardBody(
+      
+      # tags$head(
+      #     tags$style(HTML("
+      #             .btn {
+      #               height: 5px;
+      #               }
+      #           "))
+      # ),
+      
         tabItems(
 ############################
 #SETUP
