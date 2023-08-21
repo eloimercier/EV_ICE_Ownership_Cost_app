@@ -313,7 +313,7 @@ output$RownamesCarInfoTable <- renderDT({
 output$CarInfoTable1 <- renderDT({
     if(!is.na(carSelection$car1$engine)){
         car_selected_table <- data.frame(c(carSelection$car1$engine, carSelection$car1$MSRP, carSelection$car1$efficiency, carSelection$car1$fuel_rate, carSelection$car1$maintenance))
-        datatable(car_selected_table, colnames = rep("", ncol(car_selected_table)), rownames = rep("", nrow(car_selected_table)),  options = list(dom = 't', ordering=FALSE, selection = 'none', editable=FALSE))
+        datatable(car_selected_table, colnames = rep("", ncol(car_selected_table)), rownames = rep("", nrow(car_selected_table)),  options = list(dom = 't', ordering=FALSE), selection = 'none', editable=FALSE)
     }
 })
 
@@ -321,30 +321,51 @@ output$CarInfoTable1 <- renderDT({
 output$CarInfoTable2 <- renderDT({
     if(!is.na(carSelection$car2$engine)){
         car_selected_table <- data.frame(c(carSelection$car2$engine, carSelection$car2$MSRP, carSelection$car2$efficiency, carSelection$car2$fuel_rate, carSelection$car2$maintenance))
-        datatable(car_selected_table, colnames = rep("", ncol(car_selected_table)), rownames = rep("", nrow(car_selected_table)),  options = list(dom = 't', ordering=FALSE, selection = 'none', editable=FALSE))
+        datatable(car_selected_table, colnames = rep("", ncol(car_selected_table)), rownames = rep("", nrow(car_selected_table)),  options = list(dom = 't', ordering=FALSE), selection = 'none', editable=FALSE)
     }
 })
 
 output$CarInfoTable3 <- renderDT({
     if(!is.na(carSelection$car3$engine)){
         car_selected_table <- data.frame(c(carSelection$car3$engine, carSelection$car3$MSRP, carSelection$car3$efficiency, carSelection$car3$fuel_rate, carSelection$car3$maintenance))
-        datatable(car_selected_table, colnames = rep("", ncol(car_selected_table)), rownames = rep("", nrow(car_selected_table)),  options = list(dom = 't', ordering=FALSE, selection = 'none', editable=FALSE))
+        datatable(car_selected_table, colnames = rep("", ncol(car_selected_table)), rownames = rep("", nrow(car_selected_table)),  options = list(dom = 't', ordering=FALSE), selection = 'none', editable=FALSE)
     }
 })
 
 output$CarInfoTable4 <- renderDT({
     if(!is.na(carSelection$car4$engine)){
         car_selected_table <- data.frame(c(carSelection$car4$engine, carSelection$car4$MSRP, carSelection$car4$efficiency, carSelection$car4$fuel_rate, carSelection$car4$maintenance))
-        datatable(car_selected_table, colnames = rep("", ncol(car_selected_table)), rownames = rep("", nrow(car_selected_table)),  options = list(dom = 't', ordering=FALSE, selection = 'none', editable=TRUE))
+        datatable(car_selected_table, colnames = rep("", ncol(car_selected_table)), rownames = rep("", nrow(car_selected_table)),  options = list(dom = 't', ordering=FALSE), selection = 'none', editable=TRUE)
     }
 })
 
 output$CarInfoTable5 <- renderDT({
     if(!is.na(carSelection$car5$engine)){
         car_selected_table <- data.frame(c(carSelection$car5$engine, carSelection$car5$MSRP, carSelection$car5$efficiency, carSelection$car5$fuel_rate, carSelection$car5$maintenance))
-        datatable(car_selected_table, colnames = rep("", ncol(car_selected_table)), rownames = rep("", nrow(car_selected_table)),  options = list(dom = 't', ordering=FALSE, selection = 'none', editable=TRUE))
+        datatable(car_selected_table, colnames = rep("", ncol(car_selected_table)), rownames = rep("", nrow(car_selected_table)),  options = list(dom = 't', ordering=FALSE), selection = 'none', editable=TRUE)
     }
 })
+
+
+output$CarInfoTableTEST <- renderDataTable({
+        c0 <- c("MSRP (CAD)", "Efficency (L/kWh per 100km)", "Fuel rate (CAD per L or kWh)", "Yearly Maintenance (CAD)")
+        c1 <- data.frame(c(carSelection$car1$MSRP, carSelection$car1$efficiency, carSelection$car1$fuel_rate, carSelection$car1$maintenance))
+        c2 <- data.frame(c(carSelection$car2$MSRP, carSelection$car2$efficiency, carSelection$car2$fuel_rate, carSelection$car2$maintenance))
+        c3 <- data.frame(c(carSelection$car3$MSRP, carSelection$car3$efficiency, carSelection$car3$fuel_rate, carSelection$car3$maintenance))
+        c4 <- data.frame(c(carSelection$car4$MSRP, carSelection$car4$efficiency, carSelection$car4$fuel_rate, carSelection$car4$maintenance))
+        c5 <- data.frame(c(carSelection$car5$MSRP, carSelection$car5$efficiency, carSelection$car5$fuel_rate, carSelection$car5$maintenance))
+        car_selected_table <- cbind(c0,c1,c2,c3,c4,c5)
+        datatable(car_selected_table, colnames = rep("", ncol(car_selected_table)), rownames=FALSE, 
+                selection = list(mode = 'single', target = 'column', selectable = c(-1)),
+                editable = list(target = "cell", disable = list(columns = c(0))),
+                options = list( dom = 't', ordering=FALSE, autoWidth = F,
+                    columnDefs = list(list(className = 'text-center', width="150px", targets = c(0)),
+                                    list(className = 'text-center', width="200px", targets = c(1,2,3,4,5))
+                        ) 
+                )                
+        )    
+},server = TRUE)
+
 
 #### Selected Car Cost #### 
 
@@ -377,6 +398,14 @@ output$CarCostTable5 <- renderDT({
   car_selected_table <- data.frame(Cost=1:17)
   car_selected_table
 },selection = 'none',  options = list(dom = 't', ordering=FALSE), rownames = rep("", 17))
+
+
+
+output$CarCostTableTEST <- renderDT({
+  test_table <- data.frame( Car1=1:17, Car2=1:17, Car3=1:17, Car4=1:17, Car5=1:17)
+  test_table
+},selection = 'none',  options = list(dom = 't', ordering=FALSE))
+
 
 
 

@@ -34,13 +34,7 @@ ui <- dashboardPage(skin = "green",
 
     dashboardBody(
       
-      # tags$head(
-      #     tags$style(HTML("
-      #             .btn {
-      #               height: 5px;
-      #               }
-      #           "))
-      # ),
+ 
       
         tabItems(
 ############################
@@ -73,17 +67,17 @@ tabItem(tabName = "compare",
               tabPanel("Comparison", 
                     fluidRow(
 
-                        column(2,uiOutput("CarSelection0UI"), DTOutput("RownamesCarInfoTable"), DTOutput("RownamesCarCostTable")),
-                        column(2,uiOutput("CarMake1UI"), uiOutput("CarModel1UI"), uiOutput("CarTrim1UI"), DTOutput("CarInfoTable1"), DTOutput("CarCostTable1")),
-                        column(2,uiOutput("CarMake2UI"), uiOutput("CarModel2UI"), uiOutput("CarTrim2UI"), DTOutput("CarInfoTable2"), DTOutput("CarCostTable2")),
-                        column(2,uiOutput("CarMake3UI"), uiOutput("CarModel3UI"), uiOutput("CarTrim3UI"), DTOutput("CarInfoTable3"), DTOutput("CarCostTable3")),
-                        column(2,uiOutput("CarMake4UI"), uiOutput("CarModel4UI"), uiOutput("CarTrim4UI"), DTOutput("CarInfoTable4"), DTOutput("CarCostTable4")),
-                        column(2,uiOutput("CarMake5UI"), uiOutput("CarModel5UI"), uiOutput("CarTrim5UI"), DTOutput("CarInfoTable5"), DTOutput("CarCostTable5"))
+                        column(2,uiOutput("CarSelection0UI")), #, DTOutput("RownamesCarCostTable")),
+                        column(2,uiOutput("CarMake1UI"), uiOutput("CarModel1UI"), uiOutput("CarTrim1UI")), #, DTOutput("CarCostTable1")),
+                        column(2,uiOutput("CarMake2UI"), uiOutput("CarModel2UI"), uiOutput("CarTrim2UI")), #, DTOutput("CarCostTable2")),
+                        column(2,uiOutput("CarMake3UI"), uiOutput("CarModel3UI"), uiOutput("CarTrim3UI")), #, DTOutput("CarCostTable3")),
+                        column(2,uiOutput("CarMake4UI"), uiOutput("CarModel4UI"), uiOutput("CarTrim4UI")), #, DTOutput("CarCostTable4")),
+                        column(2,uiOutput("CarMake5UI"), uiOutput("CarModel5UI"), uiOutput("CarTrim5UI")) #, DTOutput("CarCostTable5"))
                     ),
-                    
-
-                   DTOutput("comparison_table"), 
-                   plotOutput("comparison_plot")
+                        dataTableOutput("CarInfoTableTEST"),
+                        
+                   #DTOutput("comparison_table"), 
+                   #plotOutput("comparison_plot")
                ),
 
               tabPanel("Model Variables", uiOutput("model_variable_info"), DTOutput("model_variable_table"))
