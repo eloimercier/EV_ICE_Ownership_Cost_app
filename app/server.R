@@ -12,17 +12,25 @@ server <- function(input, output, session) {
 ##############################################################
 ######################### READ DATA ##########################
 ##############################################################
+  car_ini <- list(name=NA, MSRP=NA, engine=NA, efficiency=NA, fuel_rate=NA, maintenance=NA)
 
 	dataTables <- reactiveValues(car_data=NA, rebates=NA, taxes=NA, gas=NA, electricity=NA, fees=NA)
-	dataVariable <- reactiveValues(region=NA, federal_rebate=NA, federal_max_msrp=NA,  region_rebate=NA, region_max_msrp=NA, tax=NA, gas_rate=NA, electricity_rate=NA)
+	dataVariable <- reactiveValues(region=NA, federal_rebate=NA, federal_max_msrp=NA, region_rebate=NA, region_max_msrp=NA, tax=NA, gas_rate=NA, electricity_rate=NA, #province specific
+                                  ice_efficiency=8, ice_maintenance=450, bev_efficiency=15, bev_maintenance=250, depreciation_rate=0.13) #global
+  carSelection <- reactiveValues(car1=car_ini, car2=car_ini, car3=car_ini, car4=car_ini, car5=car_ini)
 
 	observe({
-		dataTables$car_data <- read.xlsx("../data/EV_list_Canada.xlsx", sheet="Cars", check.names = TRUE)
-		dataTables$rebates <- read.xlsx("../data/EV_list_Canada.xlsx", sheet="Rebates")
-		dataTables$taxes <- read.xlsx("../data/EV_list_Canada.xlsx", sheet="Taxes", rowNames = TRUE)
-		dataTables$gas <- read.xlsx("../data/EV_list_Canada.xlsx", sheet="Gas", rowNames = TRUE)
-		dataTables$electricity <- read.xlsx("../data/EV_list_Canada.xlsx", sheet="Electricity", rowNames = TRUE)
-		dataTables$delivery_fees <- read.xlsx("../data/EV_list_Canada.xlsx", sheet="Fees", rowNames = TRUE)
+    #car_data
+		car_data <- read.xlsx("data/EV_list_Canada.xlsx", sheet="Cars", check.names = TRUE)
+    rownames(car_data) <- paste(car_data$Make, car_data$Model, car_data$Trim)
+    colnames(car_data) <- c("Make","Model", "Trim", "Engine", "MSRP (CAD)", "Link")
+    dataTables$car_data <- car_data
+
+		dataTables$rebates <- read.xlsx("data/EV_list_Canada.xlsx", sheet="Rebates")
+		dataTables$taxes <- read.xlsx("data/EV_list_Canada.xlsx", sheet="Taxes", rowNames = TRUE)
+		dataTables$gas <- read.xlsx("data/EV_list_Canada.xlsx", sheet="Gas", rowNames = TRUE)
+		dataTables$electricity <- read.xlsx("data/EV_list_Canada.xlsx", sheet="Electricity", rowNames = TRUE)
+		dataTables$delivery_fees <- read.xlsx("data/EV_list_Canada.xlsx", sheet="Fees", rowNames = TRUE)
 	})
 
 ##############################################################
@@ -31,8 +39,7 @@ server <- function(input, output, session) {
 
 
 observeEvent(input$info, {
-    version <- read.table("../VERSION")[1,1]
-    print(version)
+    version <- read.table("VERSION")[1,1]
     shinyalert("EV Comparator App", HTML(paste0(version,"<br><br>
       This document focuses on affordable Electric Vehicles (EVs) available in Canada. It is not meant to encompass all EVs on the market. A few Internal Combustion Engine (ICE) vehicles have been included to the list for comparison.<br><br>
       Prices are in CAD.<br><br>
@@ -130,12 +137,12 @@ output$rebate_info <- renderUI({
 output$car_table <- renderDT({
 	car_list <- dataTables$car_data
 	car_list <- car_list[,-which(colnames(car_list)=="Link")]
-	car_list$delivery_fees <- sapply(car_list$Maker, function(x){dataTables$delivery_fees[x,1]})
+	car_list$delivery_fees <- sapply(car_list$Make, function(x){dataTables$delivery_fees[x,1]})
 	car_list$delivery_fees[is.na(car_list$delivery_fees)] <- 0
-	car_list$after_tax_fees <- (car_list[,"MSRP..CAD."] + car_list$delivery_fees) * (1+dataVariable$tax) #(msrp + delivery) * taxes
+	car_list$after_tax_fees <- (car_list[,"MSRP (CAD)"] + car_list$delivery_fees) * (1+dataVariable$tax) #(msrp + delivery) * taxes
 
-	car_list$vehicle_federal_rebate <- ifelse(car_list[,"MSRP..CAD."]<=dataVariable$federal_max_msrp & car_list$Engine=="BEV", dataVariable$federal_rebate ,0)
-	car_list$vehicle_region_rebate <- ifelse(car_list[,"MSRP..CAD."]<=dataVariable$region_max_msrp & car_list$Engine=="BEV", dataVariable$region_rebate ,0)
+	car_list$vehicle_federal_rebate <- ifelse(car_list[,"MSRP (CAD)"]<=dataVariable$federal_max_msrp & car_list$Engine=="BEV", dataVariable$federal_rebate ,0)
+	car_list$vehicle_region_rebate <- ifelse(car_list[,"MSRP (CAD)"]<=dataVariable$region_max_msrp & car_list$Engine=="BEV", dataVariable$region_rebate ,0)
 	car_list$after_rebates <- car_list$after_tax_fees - car_list$vehicle_federal_rebate - car_list$vehicle_region_rebate
 	car_list <- car_list[order(car_list$after_tax_fees,decreasing = FALSE),]
 	
@@ -143,7 +150,7 @@ output$car_table <- renderDT({
 	  car_list$after_tax_fees <- car_list$after_rebates<- "-"
 	}
 	
-	colnames(car_list) <- c("Maker","Model", "Trim", "Engine", "MSRP", "Delivery fees", "After tax and fees", "Federal rebate", "Region rebate", "After rebates")
+	colnames(car_list) <- c("Make","Model", "Trim", "Engine", "MSRP", "Delivery fees", "After tax and fees", "Federal rebate", "Region rebate", "After rebates")
 	colnames(car_list)[9] <- paste0(dataVariable$region," rebate")
 	car_list
 	
@@ -155,11 +162,7 @@ output$car_table <- renderDT({
 ######################### COMPARISON #########################
 ##############################################################
 
-#tabPanel("Model Variables",  DTOutput("model_table")),
-#tabPanel("Comparison",  DTOutput("comparison_table"), plotOutput("comparison_plot"))
-
 output$modelVariableUI <- renderUI({
- 
   tagList(
     numericInput("yearly_km", "Km driven yearly:", 10000, min = 1, max = 50000, step=1000),
     numericInput("keep_years", "How many years will you keep the car for:", 10, min = 1, max = 20, step=1),
@@ -167,32 +170,234 @@ output$modelVariableUI <- renderUI({
   )
 })
 
+#### CAR SELECTION UI #### 
+
+output$CarSelection0UI <- renderUI({
+    HTML(paste0('<br><b>Make </b>','<br><br><br><br>',
+          '<b>Model </b>','<br><br><br><br>',
+          '<b>Trim </b>','<br><br>'
+    ))
+})
+
+#Car1
+output$CarMake1UI <- renderUI({
+    makers <- sort(unique(dataTables$car_data$Make))
+    selectizeInput('make1', '', choices = makers)
+})
+output$CarModel1UI <- renderUI({
+    maker_models <- unique(dataTables$car_data[dataTables$car_data$Make==input$make1,"Model"])
+    selectizeInput('model1', '', choices = maker_models)
+})
+output$CarTrim1UI <- renderUI({
+    maker_model_trims <- dataTables$car_data[dataTables$car_data$Make==input$make1 & dataTables$car_data$Model==input$model1,"Trim"]
+    selectizeInput('trim1', '', choices = maker_model_trims)
+})
+
+#Car2
+output$CarMake2UI <- renderUI({
+    makers <- sort(unique(dataTables$car_data$Make))
+    selectizeInput('make2', '', choices = makers)
+})
+output$CarModel2UI <- renderUI({
+    maker_models <- unique(dataTables$car_data[dataTables$car_data$Make==input$make2,"Model"])
+    selectizeInput('model2', '', choices = maker_models)
+})
+output$CarTrim2UI <- renderUI({
+    maker_model_trims <- dataTables$car_data[dataTables$car_data$Make==input$make2 & dataTables$car_data$Model==input$model2,"Trim"]
+    selectizeInput('trim2', '', choices = maker_model_trims)
+})
+
+#Car 3
+output$CarMake3UI <- renderUI({
+    makers <- sort(unique(dataTables$car_data$Make))
+    selectizeInput('make3', '', choices = makers)
+})
+output$CarModel3UI <- renderUI({
+    maker_models <- unique(dataTables$car_data[dataTables$car_data$Make==input$make3,"Model"])
+    selectizeInput('model3', '', choices = maker_models)
+})
+output$CarTrim3UI <- renderUI({
+    maker_model_trims <- dataTables$car_data[dataTables$car_data$Make==input$make3 & dataTables$car_data$Model==input$model3,"Trim"]
+    selectizeInput('trim3', '', choices = maker_model_trims)
+})
+
+#Car 4
+output$CarMake4UI <- renderUI({
+    makers <- sort(unique(dataTables$car_data$Make))
+    selectizeInput('make4', '', choices = makers)
+})
+output$CarModel4UI <- renderUI({
+    maker_models <- unique(dataTables$car_data[dataTables$car_data$Make==input$make4,"Model"])
+    selectizeInput('model4', '', choices = maker_models)
+})
+output$CarTrim4UI <- renderUI({
+    maker_model_trims <- dataTables$car_data[dataTables$car_data$Make==input$make4 & dataTables$car_data$Model==input$model4,"Trim"]
+    selectizeInput('trim4', '', choices = maker_model_trims)
+})
+
+#Car 5
+output$CarMake5UI <- renderUI({
+    makers <- sort(unique(dataTables$car_data$Make))
+    selectizeInput('make5', '', choices = makers)
+})
+output$CarModel5UI <- renderUI({
+    maker_models <- unique(dataTables$car_data[dataTables$car_data$Make==input$make5,"Model"])
+    selectizeInput('model5', '', choices = maker_models)
+})
+output$CarTrim5UI <- renderUI({
+    maker_model_trims <- dataTables$car_data[dataTables$car_data$Make==input$make5 & dataTables$car_data$Model==input$model5,"Trim"]
+    selectizeInput('trim5', '', choices = maker_model_trims)
+})
+
+#### UPDATE SELECTION #### 
+
+observeEvent(c(input$make1, input$model1, input$trim1),{
+    car_long_name <- paste(input$make1, input$model1, input$trim1)
+    msrp <- dataTables$car_data[car_long_name,"MSRP (CAD)"]
+    engine <- dataTables$car_data[car_long_name,"Engine"]
+    efficiency <- ifelse(engine=="BEV", dataVariable$bev_efficiency, dataVariable$ice_efficiency)
+    fuel_rate <- ifelse(engine=="BEV", dataVariable$electricity_rate, dataVariable$gas_rate)
+    maintenance <- ifelse(engine=="BEV", dataVariable$bev_maintenance, dataVariable$ice_maintenance)
+    carSelection$car1 <- list(name=car_long_name, MSRP=msrp, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, maintenance=maintenance)
+})
+
+observeEvent(c(input$make2, input$model2, input$trim2),{
+    car_long_name <- paste(input$make2, input$model2, input$trim2)
+    msrp <- dataTables$car_data[car_long_name,"MSRP (CAD)"]
+    engine <- dataTables$car_data[car_long_name,"Engine"]
+    efficiency <- ifelse(engine=="BEV", dataVariable$bev_efficiency, dataVariable$ice_efficiency)
+    fuel_rate <- ifelse(engine=="BEV", dataVariable$electricity_rate, dataVariable$gas_rate)
+    maintenance <- ifelse(engine=="BEV", dataVariable$bev_maintenance, dataVariable$ice_maintenance)
+    carSelection$car2 <- list(name=car_long_name, MSRP=msrp, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, maintenance=maintenance)
+})
+
+observeEvent(c(input$make3, input$model3, input$trim3),{
+    car_long_name <- paste(input$make3, input$model3, input$trim3)
+    msrp <- dataTables$car_data[car_long_name,"MSRP (CAD)"]
+    engine <- dataTables$car_data[car_long_name,"Engine"]
+    efficiency <- ifelse(engine=="BEV", dataVariable$bev_efficiency, dataVariable$ice_efficiency)
+    fuel_rate <- ifelse(engine=="BEV", dataVariable$electricity_rate, dataVariable$gas_rate)
+    maintenance <- ifelse(engine=="BEV", dataVariable$bev_maintenance, dataVariable$ice_maintenance)
+    carSelection$car3 <- list(name=car_long_name, MSRP=msrp, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, maintenance=maintenance)
+})
+
+observeEvent(c(input$make4, input$model4, input$trim4),{
+    car_long_name <- paste(input$make4, input$model4, input$trim4)
+    msrp <- dataTables$car_data[car_long_name,"MSRP (CAD)"]
+    engine <- dataTables$car_data[car_long_name,"Engine"]
+    efficiency <- ifelse(engine=="BEV", dataVariable$bev_efficiency, dataVariable$ice_efficiency)
+    fuel_rate <- ifelse(engine=="BEV", dataVariable$electricity_rate, dataVariable$gas_rate)
+    maintenance <- ifelse(engine=="BEV", dataVariable$bev_maintenance, dataVariable$ice_maintenance)
+    carSelection$car4 <- list(name=car_long_name, MSRP=msrp, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, maintenance=maintenance)
+})
+
+observeEvent(c(input$make5, input$model5, input$trim5),{
+    car_long_name <- paste(input$make5, input$model5, input$trim5)
+    msrp <- dataTables$car_data[car_long_name,"MSRP (CAD)"]
+    engine <- dataTables$car_data[car_long_name,"Engine"]
+    efficiency <- ifelse(engine=="BEV", dataVariable$bev_efficiency, dataVariable$ice_efficiency)
+    fuel_rate <- ifelse(engine=="BEV", dataVariable$electricity_rate, dataVariable$gas_rate)
+    maintenance <- ifelse(engine=="BEV", dataVariable$bev_maintenance, dataVariable$ice_maintenance)
+    carSelection$car5 <- list(name=car_long_name, MSRP=msrp, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, maintenance=maintenance)
+})
+
+
+#### SELECTED CAR INFO #### 
+
+output$RownamesCarInfoTable <- renderDT({
+  rownames_car_selected_table <- data.frame(A=c("Engine", "MSRP (CAD)", "Efficency (L/kWh per 100km)", "Fuel rate (CAD per L or kWh)", "Yearly Maintenance (CAD)"))
+  rownames_car_selected_table
+},selection = 'none',  options = list(dom = 't', ordering=FALSE), colnames = rep("", 1), rownames = rep("", 5))
+
+
+output$CarInfoTable1 <- renderDT({
+    if(!is.na(carSelection$car1$engine)){
+        car_selected_table <- data.frame(c(carSelection$car1$engine, carSelection$car1$MSRP, carSelection$car1$efficiency, carSelection$car1$fuel_rate, carSelection$car1$maintenance))
+        datatable(car_selected_table, colnames = rep("", ncol(car_selected_table)), rownames = rep("", nrow(car_selected_table)),  options = list(dom = 't', ordering=FALSE, selection = 'none', editable=FALSE))
+    }
+})
+
+
+output$CarInfoTable2 <- renderDT({
+    if(!is.na(carSelection$car2$engine)){
+        car_selected_table <- data.frame(c(carSelection$car2$engine, carSelection$car2$MSRP, carSelection$car2$efficiency, carSelection$car2$fuel_rate, carSelection$car2$maintenance))
+        datatable(car_selected_table, colnames = rep("", ncol(car_selected_table)), rownames = rep("", nrow(car_selected_table)),  options = list(dom = 't', ordering=FALSE, selection = 'none', editable=FALSE))
+    }
+})
+
+output$CarInfoTable3 <- renderDT({
+    if(!is.na(carSelection$car3$engine)){
+        car_selected_table <- data.frame(c(carSelection$car3$engine, carSelection$car3$MSRP, carSelection$car3$efficiency, carSelection$car3$fuel_rate, carSelection$car3$maintenance))
+        datatable(car_selected_table, colnames = rep("", ncol(car_selected_table)), rownames = rep("", nrow(car_selected_table)),  options = list(dom = 't', ordering=FALSE, selection = 'none', editable=FALSE))
+    }
+})
+
+output$CarInfoTable4 <- renderDT({
+    if(!is.na(carSelection$car4$engine)){
+        car_selected_table <- data.frame(c(carSelection$car4$engine, carSelection$car4$MSRP, carSelection$car4$efficiency, carSelection$car4$fuel_rate, carSelection$car4$maintenance))
+        datatable(car_selected_table, colnames = rep("", ncol(car_selected_table)), rownames = rep("", nrow(car_selected_table)),  options = list(dom = 't', ordering=FALSE, selection = 'none', editable=TRUE))
+    }
+})
+
+output$CarInfoTable5 <- renderDT({
+    if(!is.na(carSelection$car5$engine)){
+        car_selected_table <- data.frame(c(carSelection$car5$engine, carSelection$car5$MSRP, carSelection$car5$efficiency, carSelection$car5$fuel_rate, carSelection$car5$maintenance))
+        datatable(car_selected_table, colnames = rep("", ncol(car_selected_table)), rownames = rep("", nrow(car_selected_table)),  options = list(dom = 't', ordering=FALSE, selection = 'none', editable=TRUE))
+    }
+})
+
+#### Selected Car Cost #### 
+
+output$RownamesCarCostTable <- renderDT({
+  rownames_car_cost_table <- data.frame(Year=1:17)
+  rownames_car_cost_table
+},selection = 'none',  options = list(dom = 't', ordering=FALSE), rownames = rep("", 17))
+
+output$CarCostTable1 <- renderDT({
+  car_selected_table <- data.frame(Cost=1:17)
+  car_selected_table
+},selection = 'none',  options = list(dom = 't', ordering=FALSE), rownames = rep("", 17))
+
+output$CarCostTable2 <- renderDT({
+  car_selected_table <- data.frame(Cost=1:17)
+  car_selected_table
+},selection = 'none',  options = list(dom = 't', ordering=FALSE), rownames = rep("", 17))
+
+output$CarCostTable3 <- renderDT({
+  car_selected_table <- data.frame(Cost=1:17)
+  car_selected_table
+},selection = 'none',  options = list(dom = 't', ordering=FALSE), rownames = rep("", 17))
+
+output$CarCostTable4 <- renderDT({
+  car_selected_table <- data.frame(Cost=1:17)
+  car_selected_table
+},selection = 'none',  options = list(dom = 't', ordering=FALSE), rownames = rep("", 17))
+
+output$CarCostTable5 <- renderDT({
+  car_selected_table <- data.frame(Cost=1:17)
+  car_selected_table
+},selection = 'none',  options = list(dom = 't', ordering=FALSE), rownames = rep("", 17))
+
+
 
 #### MODEL VARIABLES #### 
 output$model_variable_info <- renderUI({
   HTML(paste0('<b>','Here are the defaut parameters used by the model. It might not correspond to your scenari. You cna use custom values by double clicking on a value to edit.','</b>'))
 })
 
-output$model_variable_table <- renderDT({
-  
-  
-  default_variables <- c("Yearly km"=12000,
+output$model_variable_table <- renderDT({  
+  default_variables <- c(
     "Gas ($/L)"=dataVariable$gas_rate,
     "Electricity ($/kWh)"=dataVariable$electricity_rate,
-    "Keep car for X years"=10,
-    "ICE L/100km"=8.0,
-    "ICE maintenance (yearly)"=450,
-    "BEV kWh/100km"=15,
-    "BEV maintenance (yearly)"=250,
-    "Depreciation rate after X years"=0.13)
-  
-  
+    "ICE L/100km"=dataVariable$ice_efficiency,
+    "ICE maintenance (yearly)"=dataVariable$ice_maintenance,
+    "BEV kWh/100km"=dataVariable$bev_efficiency,
+    "BEV maintenance (yearly)"=dataVariable$bev_maintenance,
+    "Depreciation rate (yearly)"=dataVariable$depreciation_rate)
+
   model_variable_table <- data.frame(Parameters=names(default_variables),
-                                     Values=default_variables
-                                     )
-  model_variable_table
-  
-  
+                                     Values=default_variables)
+  model_variable_table  
 }, selection = 'single', rownames=FALSE, editable=TRUE)
 
 
