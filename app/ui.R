@@ -42,7 +42,9 @@ ui <- dashboardPage(skin = "green",
 ############################
         tabItem(tabName = "setup",
             uiOutput("setupUI"),
-            uiOutput("rebate_info")
+            uiOutput("rebate_info"),
+            uiOutput("modelVariableUI")
+
         ),
 
 ############################
@@ -59,9 +61,9 @@ ui <- dashboardPage(skin = "green",
 
 tabItem(tabName = "compare",
         fluidRow(
-          column(12,
-            box(uiOutput("modelVariableUI"))
-          ),
+          # column(6,
+          #   box(uiOutput("modelVariableUI"))
+          # ),
           column(12, 
             fluidRow(
                 column(2,uiOutput("CarSelection0UI")), #, DTOutput("RownamesCarCostTable")),
@@ -78,7 +80,7 @@ tabItem(tabName = "compare",
         
 tabsetPanel(
 tabPanel("Table", 
-    DTOutput("CarCostTableTEST")
+    dataTableOutput("CarCostTableTEST")
     ),
 tabPanel("Plot", 
     plotOutput("CarCostplotTEST")
