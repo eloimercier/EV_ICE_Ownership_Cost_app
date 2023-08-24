@@ -12,11 +12,11 @@ server <- function(input, output, session) {
 ##############################################################
 ######################### READ DATA ##########################
 ##############################################################
-  car_ini <- list(name=NA, MSRP=NA, engine=NA, efficiency=NA, fuel_rate=NA, fuel_increase=NA, maintenance=NA)
+  car_ini <- list(name=NA, MSRP=NA, rebates=NA, purchase_price=NA, engine=NA, efficiency=NA, fuel_rate=NA, fuel_increase=NA, maintenance=NA, yearly_kms=NA)
 
 	dataTables <- reactiveValues(car_data=NA, rebates=NA, taxes=NA, gas=NA, electricity=NA, fees=NA)
 	dataVariable <- reactiveValues(region=NA, federal_rebate=NA, federal_max_msrp=NA, region_rebate=NA, region_max_msrp=NA, tax=NA, gas_rate=NA, electricity_rate=NA, #province specific
-                                  ice_efficiency=8, ice_maintenance=450, bev_efficiency=15, bev_maintenance=250, depreciation_rate=0.13, gas_increase=0.05, electricity_increase=0.01) #global
+                                  ice_efficiency=8, ice_maintenance=350, bev_efficiency=15, bev_maintenance=150, depreciation_rate=0.13, gas_increase=5, electricity_increase=1) #global
     carSelection <- reactiveValues(car1=car_ini, car2=car_ini, car3=car_ini, car4=car_ini, car5=car_ini)
     modelVariableTable <- reactiveValues(df=NA) #store variable needed for computation
 
@@ -88,7 +88,7 @@ observe({
     }
 
     #Set rates
-    dataVariable$tax <- as.numeric(dataTables$taxes["Federal",1]) + as.numeric(dataTables$taxes[input$region,1])
+    dataVariable$tax <- 1 + as.numeric(dataTables$taxes["Federal",1]) + as.numeric(dataTables$taxes[input$region,1])
     dataVariable$gas_rate  <- as.numeric(dataTables$gas[input$region,1])
     dataVariable$electricity_rate <- as.numeric(dataTables$electricity[input$region,1])
     
@@ -166,7 +166,7 @@ output$car_table <- renderDT({
 
 output$modelVariableUI <- renderUI({
   tagList(
-    numericInput("yearly_km", "Km driven yearly:", 10000, min = 1, max = 50000, step=1000),
+    numericInput("yearly_kms", "Km driven yearly:", 10000, min = 1, max = 50000, step=1000),
     numericInput("keep_years", "How many years will you keep the car for:", 10, min = 1, max = 20, step=1)
   )
 })
@@ -252,68 +252,99 @@ output$CarTrim5UI <- renderUI({
 
 #### UPDATE SELECTION #### 
 
-observeEvent(c(input$region, input$make1, input$model1, input$trim1),{
-    if(!is.null(input$trim1)){
+observeEvent(c(input$region, input$yearly_kms, input$make1, input$model1, input$trim1),{
+    if(!is.null(input$region) & !is.null(input$trim1) & !identical(input$trim1,"")){
+print("ADD DELIVERY FEES")
         car_long_name <- paste(input$make1, input$model1, input$trim1)
-        msrp <- dataTables$car_data[car_long_name,"MSRP (CAD)"]
         engine <- dataTables$car_data[car_long_name,"Engine"]
+        msrp <- dataTables$car_data[car_long_name,"MSRP (CAD)"]
+        if(identical(engine, "BEV")){
+            rebates <- ifelse(msrp <= dataVariable$federal_max_msrp | is.na(dataVariable$federal_max_msrp), dataVariable$federal_rebate, 0) + ifelse(msrp <= dataVariable$region_max_msrp  | is.na(dataVariable$region_max_msrp),  dataVariable$region_rebate, 0)
+        } else {
+            rebates <- 0
+        }
+        purchase_price <- round(msrp*dataVariable$tax - rebates,2)
         efficiency <- ifelse(engine=="BEV", dataVariable$bev_efficiency, dataVariable$ice_efficiency)
         fuel_rate <- ifelse(engine=="BEV", dataVariable$electricity_rate, dataVariable$gas_rate)
         fuel_increase <- ifelse(engine=="BEV", dataVariable$electricity_increase, dataVariable$gas_increase) 
         maintenance <- ifelse(engine=="BEV", dataVariable$bev_maintenance, dataVariable$ice_maintenance)
-        carSelection$car1 <- list(name=car_long_name, MSRP=msrp, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, fuel_increase=fuel_increase, maintenance=maintenance)
+        carSelection$car1 <- list(name=car_long_name, MSRP=msrp, rebates=rebates, purchase_price=purchase_price, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, fuel_increase=fuel_increase, maintenance=maintenance, yearly_kms=input$yearly_kms)
     }
 })
 
-observeEvent(c(input$region, input$make2, input$model2, input$trim2),{
-    if(!is.null(input$trim2)){
+observeEvent(c(input$region, input$yearly_kms, input$make2, input$model2, input$trim2),{
+    if(!is.null(input$region) & !is.null(input$trim2) & !identical(input$trim2,"")){
         car_long_name <- paste(input$make2, input$model2, input$trim2)
-        msrp <- dataTables$car_data[car_long_name,"MSRP (CAD)"]
         engine <- dataTables$car_data[car_long_name,"Engine"]
+        msrp <- dataTables$car_data[car_long_name,"MSRP (CAD)"]
+        if(identical(engine, "BEV")){
+            rebates <- ifelse(msrp <= dataVariable$federal_max_msrp | is.na(dataVariable$federal_max_msrp), dataVariable$federal_rebate, 0) + ifelse(msrp <= dataVariable$region_max_msrp  | is.na(dataVariable$region_max_msrp),  dataVariable$region_rebate, 0)
+        } else {
+            rebates <- 0
+        }
+        purchase_price <- round(msrp*dataVariable$tax - rebates,2)
         efficiency <- ifelse(engine=="BEV", dataVariable$bev_efficiency, dataVariable$ice_efficiency)
         fuel_rate <- ifelse(engine=="BEV", dataVariable$electricity_rate, dataVariable$gas_rate)
         fuel_increase <- ifelse(engine=="BEV", dataVariable$electricity_increase, dataVariable$gas_increase) 
         maintenance <- ifelse(engine=="BEV", dataVariable$bev_maintenance, dataVariable$ice_maintenance)
-        carSelection$car2 <- list(name=car_long_name, MSRP=msrp, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, fuel_increase=fuel_increase, maintenance=maintenance)
+        carSelection$car2 <- list(name=car_long_name, MSRP=msrp, rebates=rebates, purchase_price=purchase_price, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, fuel_increase=fuel_increase, maintenance=maintenance, yearly_kms=input$yearly_kms)
     }
 })
 
-observeEvent(c(input$region, input$make3, input$model3, input$trim3),{
-    if(!is.null(input$trim3)){
+observeEvent(c(input$region, input$yearly_kms, input$make3, input$model3, input$trim3),{
+    if(!is.null(input$region) & !is.null(input$trim3) & !identical(input$trim3,"")){
         car_long_name <- paste(input$make3, input$model3, input$trim3)
-        msrp <- dataTables$car_data[car_long_name,"MSRP (CAD)"]
         engine <- dataTables$car_data[car_long_name,"Engine"]
+        msrp <- dataTables$car_data[car_long_name,"MSRP (CAD)"]
+        if(identical(engine, "BEV")){
+            rebates <- ifelse(msrp <= dataVariable$federal_max_msrp | is.na(dataVariable$federal_max_msrp), dataVariable$federal_rebate, 0) + ifelse(msrp <= dataVariable$region_max_msrp  | is.na(dataVariable$region_max_msrp),  dataVariable$region_rebate, 0)
+        } else {
+            rebates <- 0
+        }
+        purchase_price <- round(msrp*dataVariable$tax - rebates,2)
         efficiency <- ifelse(engine=="BEV", dataVariable$bev_efficiency, dataVariable$ice_efficiency)
         fuel_rate <- ifelse(engine=="BEV", dataVariable$electricity_rate, dataVariable$gas_rate)
         fuel_increase <- ifelse(engine=="BEV", dataVariable$electricity_increase, dataVariable$gas_increase) 
         maintenance <- ifelse(engine=="BEV", dataVariable$bev_maintenance, dataVariable$ice_maintenance)
-        carSelection$car3 <- list(name=car_long_name, MSRP=msrp, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, fuel_increase=fuel_increase, maintenance=maintenance)
+        carSelection$car3 <- list(name=car_long_name, MSRP=msrp, rebates=rebates, purchase_price=purchase_price, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, fuel_increase=fuel_increase, maintenance=maintenance, yearly_kms=input$yearly_kms)
     }
 })
 
-observeEvent(c(input$region, input$make4, input$model4, input$trim4),{
-    if(!is.null(input$trim4)){
+observeEvent(c(input$region, input$yearly_kms, input$make4, input$model4, input$trim4),{
+    if(!is.null(input$region) & !is.null(input$trim4) & !identical(input$trim4,"")){
         car_long_name <- paste(input$make4, input$model4, input$trim4)
-        msrp <- dataTables$car_data[car_long_name,"MSRP (CAD)"]
         engine <- dataTables$car_data[car_long_name,"Engine"]
+        msrp <- dataTables$car_data[car_long_name,"MSRP (CAD)"]
+        if(identical(engine, "BEV")){
+            rebates <- ifelse(msrp <= dataVariable$federal_max_msrp | is.na(dataVariable$federal_max_msrp), dataVariable$federal_rebate, 0) + ifelse(msrp <= dataVariable$region_max_msrp  | is.na(dataVariable$region_max_msrp),  dataVariable$region_rebate, 0)
+        } else {
+            rebates <- 0
+        }
+        purchase_price <- round(msrp*dataVariable$tax - rebates,2)     
         efficiency <- ifelse(engine=="BEV", dataVariable$bev_efficiency, dataVariable$ice_efficiency)
         fuel_rate <- ifelse(engine=="BEV", dataVariable$electricity_rate, dataVariable$gas_rate)
         fuel_increase <- ifelse(engine=="BEV", dataVariable$electricity_increase, dataVariable$gas_increase) 
         maintenance <- ifelse(engine=="BEV", dataVariable$bev_maintenance, dataVariable$ice_maintenance)
-        carSelection$car4 <- list(name=car_long_name, MSRP=msrp, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, fuel_increase=fuel_increase, maintenance=maintenance)
+        carSelection$car4 <- list(name=car_long_name, MSRP=msrp, rebates=rebates, purchase_price=purchase_price, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, fuel_increase=fuel_increase, maintenance=maintenance, yearly_kms=input$yearly_kms)
     }
 })
 
-observeEvent(c(input$region, input$make5, input$model5, input$trim5),{
-    if(!is.null(input$trim5)){
+observeEvent(c(input$region, input$yearly_kms, input$make5, input$model5, input$trim5),{
+    if(!is.null(input$region) & !is.null(input$trim5) & !identical(input$trim5,"")){
         car_long_name <- paste(input$make5, input$model5, input$trim5)
-        msrp <- dataTables$car_data[car_long_name,"MSRP (CAD)"]
         engine <- dataTables$car_data[car_long_name,"Engine"]
+        msrp <- dataTables$car_data[car_long_name,"MSRP (CAD)"]
+        if(identical(engine, "BEV")){
+            rebates <- ifelse(msrp <= dataVariable$federal_max_msrp | is.na(dataVariable$federal_max_msrp), dataVariable$federal_rebate, 0) + ifelse(msrp <= dataVariable$region_max_msrp  | is.na(dataVariable$region_max_msrp),  dataVariable$region_rebate, 0)
+        } else {
+            rebates <- 0
+        }
+        purchase_price <- round(msrp*dataVariable$tax - rebates,2)
         efficiency <- ifelse(engine=="BEV", dataVariable$bev_efficiency, dataVariable$ice_efficiency)
         fuel_rate <- ifelse(engine=="BEV", dataVariable$electricity_rate, dataVariable$gas_rate)
         fuel_increase <- ifelse(engine=="BEV", dataVariable$electricity_increase, dataVariable$gas_increase) 
         maintenance <- ifelse(engine=="BEV", dataVariable$bev_maintenance, dataVariable$ice_maintenance)
-        carSelection$car5 <- list(name=car_long_name, MSRP=msrp, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, fuel_increase=fuel_increase, maintenance=maintenance)
+        carSelection$car5 <- list(name=car_long_name, MSRP=msrp, rebates=rebates, purchase_price=purchase_price, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, fuel_increase=fuel_increase, maintenance=maintenance, yearly_kms=input$yearly_kms)
     }
 })
 
@@ -327,13 +358,13 @@ output$model_variable_info <- renderUI({
 
 
 observe({
-    if(!is.null(input$yearly_km)){
-        c0 <- c("MSRP (CAD)", "Kms driven (yearly)", "Efficency (L/kWh per 100km)", "Fuel rate (CAD per L or kWh)", "Fuel price increase (CAD)", "Yearly Maintenance (CAD)")
-        c1 <- data.frame(c(carSelection$car1$MSRP, input$yearly_km, carSelection$car1$efficiency, carSelection$car1$fuel_rate, carSelection$car1$fuel_increase, carSelection$car1$maintenance))
-        c2 <- data.frame(c(carSelection$car2$MSRP, input$yearly_km, carSelection$car2$efficiency, carSelection$car2$fuel_rate, carSelection$car2$fuel_increase, carSelection$car2$maintenance))
-        c3 <- data.frame(c(carSelection$car3$MSRP, input$yearly_km, carSelection$car3$efficiency, carSelection$car3$fuel_rate, carSelection$car3$fuel_increase, carSelection$car3$maintenance))
-        c4 <- data.frame(c(carSelection$car4$MSRP, input$yearly_km, carSelection$car4$efficiency, carSelection$car4$fuel_rate, carSelection$car4$fuel_increase, carSelection$car4$maintenance))
-        c5 <- data.frame(c(carSelection$car5$MSRP, input$yearly_km, carSelection$car5$efficiency, carSelection$car5$fuel_rate, carSelection$car5$fuel_increase, carSelection$car5$maintenance))
+    if(!is.null(input$yearly_kms)){
+        c0 <- c("Purchase Price (CAD)", "Kms driven (yearly)", "Efficency (L/kWh per 100km)", "Fuel rate (CAD per L or kWh)", "Fuel price increase (CAD)", "Yearly Maintenance (CAD)")
+        c1 <- data.frame(c(carSelection$car1$purchase_price, carSelection$car1$yearly_kms, carSelection$car1$efficiency, carSelection$car1$fuel_rate, carSelection$car1$fuel_increase, carSelection$car1$maintenance))
+        c2 <- data.frame(c(carSelection$car2$purchase_price, carSelection$car2$yearly_kms, carSelection$car2$efficiency, carSelection$car2$fuel_rate, carSelection$car2$fuel_increase, carSelection$car2$maintenance))
+        c3 <- data.frame(c(carSelection$car3$purchase_price, carSelection$car3$yearly_kms, carSelection$car3$efficiency, carSelection$car3$fuel_rate, carSelection$car3$fuel_increase, carSelection$car3$maintenance))
+        c4 <- data.frame(c(carSelection$car4$purchase_price, carSelection$car4$yearly_kms, carSelection$car4$efficiency, carSelection$car4$fuel_rate, carSelection$car4$fuel_increase, carSelection$car4$maintenance))
+        c5 <- data.frame(c(carSelection$car5$purchase_price, carSelection$car5$yearly_kms, carSelection$car5$efficiency, carSelection$car5$fuel_rate, carSelection$car5$fuel_increase, carSelection$car5$maintenance))
         car_selected_table <- cbind(c0,c1,c2,c3,c4,c5)
         colnames(car_selected_table) <- c("",carSelection$car1$name, carSelection$car2$name, carSelection$car3$name, carSelection$car4$name, carSelection$car5$name)
         rownames(car_selected_table) <- c0
@@ -369,7 +400,7 @@ comparisonData <- reactiveValues(df=NA)
 compute_ownership_cost <- function(purchase_price, kms, kept_years, fuel_per_100km, fuel_rate, fuel_increase, maintenance){
 #formula to get cost of ownership over X years
     fuel_cost <- kms * fuel_per_100km/100 * fuel_rate/100 * kept_years 
-    fuel_increase_cost <- kms * fuel_per_100km/100 * fuel_increase * kept_years
+    fuel_increase_cost <- kms * fuel_per_100km/100 * fuel_increase/100 * kept_years
     maintenance_cost <- maintenance * kept_years
     ownership_cost <- purchase_price + fuel_cost + fuel_increase_cost + maintenance_cost
     ownership_cost <- round(ownership_cost,2)
@@ -382,7 +413,7 @@ observe({
         df[,1] <- seq_len(input$keep_years)
         car_selected_table <- modelVariableTable$df
         for (i in 2:6){
-            df[,i] <- compute_ownership_cost(purchase_price=car_selected_table["MSRP (CAD)",i], kms=input$yearly_km, kept_years=seq_len(input$keep_years), fuel_per_100km=car_selected_table["Efficency (L/kWh per 100km)",i], fuel_rate=car_selected_table["Fuel rate (CAD per L or kWh)",i], fuel_increase=car_selected_table["Fuel price increase (CAD)",i], maintenance=car_selected_table["Yearly Maintenance (CAD)",i])
+            df[,i] <- compute_ownership_cost(purchase_price=car_selected_table["Purchase Price (CAD)",i], kms=input$yearly_kms, kept_years=seq_len(input$keep_years), fuel_per_100km=car_selected_table["Efficency (L/kWh per 100km)",i], fuel_rate=car_selected_table["Fuel rate (CAD per L or kWh)",i], fuel_increase=car_selected_table["Fuel price increase (CAD)",i], maintenance=car_selected_table["Yearly Maintenance (CAD)",i])
         }
         colnames(df) <- c("Year", carSelection$car1$name, carSelection$car2$name, carSelection$car3$name, carSelection$car4$name, carSelection$car5$name)
         comparisonData$df <- df
@@ -392,13 +423,14 @@ observe({
 
 output$CarCostTableTEST <- renderDataTable({
   car_comparison_table <- comparisonData$df
+  # car_comparison_table <- round(car_comparison_table[,-1],2)
   datatable(car_comparison_table, rownames=FALSE, 
         selection = list(mode = 'single'),
         options = list(ordering=FALSE, autoWidth = F, pageLength = 20, dom = 't',
             columnDefs = list(list(className = 'dt-head-center', targets = '_all'), #centered colnames
                               list(className = 'text-center', width="150px", targets = c(0)), #defined first column
                               list(className = 'text-center', width="200px", targets = c(1,2,3,4,5)) #defined remaining columns
-                ) 
+            ) 
         )                
     ) 
 })
@@ -498,7 +530,8 @@ output$rebate_source <- renderUI({
         "BEV kWh/100km"=dataVariable$bev_efficiency,
         "BEV maintenance (CAD, yearly)"=dataVariable$bev_maintenance,
         "Depreciation rate (yearly)"=dataVariable$depreciation_rate,
-        "Gas price increase (CAD, yearly)"=dataVariable$gas_increase)
+        "Gas price increase (CAD, yearly)"=dataVariable$gas_increase,
+        "Electricity price increase (CAD, yearly)"=dataVariable$electricity_increase)
       model_variable_table <- data.frame(Parameters=names(default_variables),
                                          Values=default_variables)
       model_variable_table
