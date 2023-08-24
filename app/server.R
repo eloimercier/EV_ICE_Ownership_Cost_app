@@ -16,10 +16,11 @@ server <- function(input, output, session) {
 
 	dataTables <- reactiveValues(car_data=NA, rebates=NA, taxes=NA, gas=NA, electricity=NA, fees=NA)
 	dataVariable <- reactiveValues(region=NA, federal_rebate=NA, federal_max_msrp=NA, region_rebate=NA, region_max_msrp=NA, tax=NA, gas_rate=NA, electricity_rate=NA, #province specific
-                                  ice_efficiency=8, ice_maintenance=450, bev_efficiency=15, bev_maintenance=250, depreciation_rate=0.13) #global
-  carSelection <- reactiveValues(car1=car_ini, car2=car_ini, car3=car_ini, car4=car_ini, car5=car_ini)
+                                  ice_efficiency=8, ice_maintenance=450, bev_efficiency=15, bev_maintenance=250, depreciation_rate=0.13, gas_increase=0.05) #global
+    carSelection <- reactiveValues(car1=car_ini, car2=car_ini, car3=car_ini, car4=car_ini, car5=car_ini)
 
 	observe({
+
     #car_data
 		car_data <- read.xlsx("data/EV_list_Canada.xlsx", sheet="Cars", check.names = TRUE)
     rownames(car_data) <- paste(car_data$Make, car_data$Model, car_data$Trim)
@@ -182,7 +183,7 @@ output$CarSelection0UI <- renderUI({
 #Car1
 output$CarMake1UI <- renderUI({
     makers <- sort(unique(dataTables$car_data$Make))
-    selectizeInput('make1', '', choices = makers)
+    selectizeInput('make1', '', choices = c(Choose='',makers))
 })
 output$CarModel1UI <- renderUI({
     maker_models <- unique(dataTables$car_data[dataTables$car_data$Make==input$make1,"Model"])
@@ -196,7 +197,7 @@ output$CarTrim1UI <- renderUI({
 #Car2
 output$CarMake2UI <- renderUI({
     makers <- sort(unique(dataTables$car_data$Make))
-    selectizeInput('make2', '', choices = makers)
+    selectizeInput('make2', '', choices = c(Choose='',makers))
 })
 output$CarModel2UI <- renderUI({
     maker_models <- unique(dataTables$car_data[dataTables$car_data$Make==input$make2,"Model"])
@@ -210,7 +211,7 @@ output$CarTrim2UI <- renderUI({
 #Car 3
 output$CarMake3UI <- renderUI({
     makers <- sort(unique(dataTables$car_data$Make))
-    selectizeInput('make3', '', choices = makers)
+    selectizeInput('make3', '', choices = c(Choose='',makers))
 })
 output$CarModel3UI <- renderUI({
     maker_models <- unique(dataTables$car_data[dataTables$car_data$Make==input$make3,"Model"])
@@ -224,7 +225,7 @@ output$CarTrim3UI <- renderUI({
 #Car 4
 output$CarMake4UI <- renderUI({
     makers <- sort(unique(dataTables$car_data$Make))
-    selectizeInput('make4', '', choices = makers)
+    selectizeInput('make4', '', choices = c(Choose='',makers))
 })
 output$CarModel4UI <- renderUI({
     maker_models <- unique(dataTables$car_data[dataTables$car_data$Make==input$make4,"Model"])
@@ -238,7 +239,7 @@ output$CarTrim4UI <- renderUI({
 #Car 5
 output$CarMake5UI <- renderUI({
     makers <- sort(unique(dataTables$car_data$Make))
-    selectizeInput('make5', '', choices = makers)
+    selectizeInput('make5', '', choices = c(Choose='',makers))
 })
 output$CarModel5UI <- renderUI({
     maker_models <- unique(dataTables$car_data[dataTables$car_data$Make==input$make5,"Model"])
@@ -495,12 +496,24 @@ output$rebate_source <- renderUI({
   })
   
   #### DELIVERY FEES #### 
-  
   output$delivery_fees_table <- renderDT({
     delivery_fees_table <- dataTables$delivery_fees
     delivery_fees_table$Region <- rownames(delivery_fees_table)
     delivery_fees_table[,2:1]
   }, selection = 'single', rownames=FALSE)
   
-
+  #### DEFAULT MODEL VARIABLES #### 
+  output$default_model_variable_table <- renderDT({
+      default_variables <- c(
+        "ICE L/100km"=dataVariable$ice_efficiency,
+        "ICE maintenance (CAD, yearly)"=dataVariable$ice_maintenance,
+        "BEV kWh/100km"=dataVariable$bev_efficiency,
+        "BEV maintenance (CAD, yearly)"=dataVariable$bev_maintenance,
+        "Depreciation rate (yearly)"=dataVariable$depreciation_rate,
+        "Gas price increase (CAD, yearly)"=dataVariable$gas_increase)
+      model_variable_table <- data.frame(Parameters=names(default_variables),
+                                         Values=default_variables)
+      model_variable_table
+  }, selection = 'single', rownames=FALSE, options = list(autoWidth = T))
+  
 }

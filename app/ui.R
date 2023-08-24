@@ -62,28 +62,28 @@ tabItem(tabName = "compare",
           column(12,
             box(uiOutput("modelVariableUI"))
           ),
-          column(12,
-            tabsetPanel(
-              tabPanel("Comparison", 
-                    fluidRow(
-
-                        column(2,uiOutput("CarSelection0UI")), #, DTOutput("RownamesCarCostTable")),
-                        column(2,uiOutput("CarMake1UI"), uiOutput("CarModel1UI"), uiOutput("CarTrim1UI")), #, DTOutput("CarCostTable1")),
-                        column(2,uiOutput("CarMake2UI"), uiOutput("CarModel2UI"), uiOutput("CarTrim2UI")), #, DTOutput("CarCostTable2")),
-                        column(2,uiOutput("CarMake3UI"), uiOutput("CarModel3UI"), uiOutput("CarTrim3UI")), #, DTOutput("CarCostTable3")),
-                        column(2,uiOutput("CarMake4UI"), uiOutput("CarModel4UI"), uiOutput("CarTrim4UI")), #, DTOutput("CarCostTable4")),
-                        column(2,uiOutput("CarMake5UI"), uiOutput("CarModel5UI"), uiOutput("CarTrim5UI")) #, DTOutput("CarCostTable5"))
-                    ),
-                        dataTableOutput("CarInfoTableTEST"),
-                        
-                   #DTOutput("comparison_table"), 
-                   #plotOutput("comparison_plot")
-               ),
-
-              tabPanel("Model Variables", uiOutput("model_variable_info"), DTOutput("model_variable_table"))
+          column(12, 
+            fluidRow(
+                column(2,uiOutput("CarSelection0UI")), #, DTOutput("RownamesCarCostTable")),
+                column(2,uiOutput("CarMake1UI"), uiOutput("CarModel1UI"), uiOutput("CarTrim1UI")), #, DTOutput("CarCostTable1")),
+                column(2,uiOutput("CarMake2UI"), uiOutput("CarModel2UI"), uiOutput("CarTrim2UI")), #, DTOutput("CarCostTable2")),
+                column(2,uiOutput("CarMake3UI"), uiOutput("CarModel3UI"), uiOutput("CarTrim3UI")), #, DTOutput("CarCostTable3")),
+                column(2,uiOutput("CarMake4UI"), uiOutput("CarModel4UI"), uiOutput("CarTrim4UI")), #, DTOutput("CarCostTable4")),
+                column(2,uiOutput("CarMake5UI"), uiOutput("CarModel5UI"), uiOutput("CarTrim5UI")) #, DTOutput("CarCostTable5"))
             )
-          )
-        )
+        ),
+            dataTableOutput("CarInfoTableTEST")
+          )      
+
+             # tabsetPanel(
+             # tabPanel("Comparison", 
+            # DTOutput("comparison_table")
+            # ),
+             # tabPanel("Comparison", 
+            # plotOutput("comparison_plot")
+            # )            
+
+        
 ),
 
 
@@ -97,7 +97,8 @@ tabItem(tabName = "compare",
                   tabPanel("Taxes",  DTOutput("tax_table"), uiOutput("tax_source")),
                   tabPanel("Gas",  DTOutput("gas_table"), uiOutput("gas_source")),
                   tabPanel("Electricity",  DTOutput("electricity_table"), uiOutput("electricity_source")),
-                  tabPanel("Delivery Fees",  DTOutput("delivery_fees_table"))
+                  tabPanel("Delivery Fees",  DTOutput("delivery_fees_table")),
+                  tabPanel("Default Model Variables",  DTOutput("default_model_variable_table"))
                 )
         )
 
