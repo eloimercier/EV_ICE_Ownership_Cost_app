@@ -72,16 +72,22 @@ tabItem(tabName = "compare",
                 column(2,uiOutput("CarMake5UI"), uiOutput("CarModel5UI"), uiOutput("CarTrim5UI")) #, DTOutput("CarCostTable5"))
             )
         ),
-            dataTableOutput("CarInfoTableTEST")
-          )      
 
-             # tabsetPanel(
-             # tabPanel("Comparison", 
-            # DTOutput("comparison_table")
-            # ),
-             # tabPanel("Comparison", 
-            # plotOutput("comparison_plot")
-            # )            
+            dataTableOutput("CarSelectedVariableTable"),
+            uiOutput("model_variable_info"),
+        
+tabsetPanel(
+tabPanel("Table", 
+    DTOutput("CarCostTableTEST")
+    ),
+tabPanel("Plot", 
+    plotOutput("CarCostplotTEST")
+    )      
+)
+
+        )
+
+      
 
         
 ),
