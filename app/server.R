@@ -254,7 +254,6 @@ output$CarTrim5UI <- renderUI({
 
 observeEvent(c(input$region, input$yearly_kms, input$make1, input$model1, input$trim1),{
     if(!is.null(input$region) & !is.null(input$trim1) & !identical(input$trim1,"")){
-print("ADD DELIVERY FEES")
         car_long_name <- paste(input$make1, input$model1, input$trim1)
         engine <- dataTables$car_data[car_long_name,"Engine"]
         msrp <- dataTables$car_data[car_long_name,"MSRP (CAD)"]
@@ -263,7 +262,8 @@ print("ADD DELIVERY FEES")
         } else {
             rebates <- 0
         }
-        purchase_price <- round(msrp*dataVariable$tax - rebates,2)
+        delivery_fees <- dataTables$delivery_fees[input$make1,"Amount"]
+        purchase_price <- round((msrp + delivery_fees) * dataVariable$tax - rebates,2)
         efficiency <- ifelse(engine=="BEV", dataVariable$bev_efficiency, dataVariable$ice_efficiency)
         fuel_rate <- ifelse(engine=="BEV", dataVariable$electricity_rate, dataVariable$gas_rate)
         fuel_increase <- ifelse(engine=="BEV", dataVariable$electricity_increase, dataVariable$gas_increase) 
@@ -282,7 +282,8 @@ observeEvent(c(input$region, input$yearly_kms, input$make2, input$model2, input$
         } else {
             rebates <- 0
         }
-        purchase_price <- round(msrp*dataVariable$tax - rebates,2)
+        delivery_fees <- dataTables$delivery_fees[input$make2,"Amount"]
+        purchase_price <- round((msrp + delivery_fees) * dataVariable$tax - rebates,2)
         efficiency <- ifelse(engine=="BEV", dataVariable$bev_efficiency, dataVariable$ice_efficiency)
         fuel_rate <- ifelse(engine=="BEV", dataVariable$electricity_rate, dataVariable$gas_rate)
         fuel_increase <- ifelse(engine=="BEV", dataVariable$electricity_increase, dataVariable$gas_increase) 
@@ -301,7 +302,8 @@ observeEvent(c(input$region, input$yearly_kms, input$make3, input$model3, input$
         } else {
             rebates <- 0
         }
-        purchase_price <- round(msrp*dataVariable$tax - rebates,2)
+        delivery_fees <- dataTables$delivery_fees[input$make3,"Amount"]
+        purchase_price <- round((msrp + delivery_fees) * dataVariable$tax - rebates,2)
         efficiency <- ifelse(engine=="BEV", dataVariable$bev_efficiency, dataVariable$ice_efficiency)
         fuel_rate <- ifelse(engine=="BEV", dataVariable$electricity_rate, dataVariable$gas_rate)
         fuel_increase <- ifelse(engine=="BEV", dataVariable$electricity_increase, dataVariable$gas_increase) 
@@ -320,7 +322,8 @@ observeEvent(c(input$region, input$yearly_kms, input$make4, input$model4, input$
         } else {
             rebates <- 0
         }
-        purchase_price <- round(msrp*dataVariable$tax - rebates,2)     
+        delivery_fees <- dataTables$delivery_fees[input$make4,"Amount"]
+        purchase_price <- round((msrp + delivery_fees) * dataVariable$tax - rebates,2)   
         efficiency <- ifelse(engine=="BEV", dataVariable$bev_efficiency, dataVariable$ice_efficiency)
         fuel_rate <- ifelse(engine=="BEV", dataVariable$electricity_rate, dataVariable$gas_rate)
         fuel_increase <- ifelse(engine=="BEV", dataVariable$electricity_increase, dataVariable$gas_increase) 
@@ -339,7 +342,8 @@ observeEvent(c(input$region, input$yearly_kms, input$make5, input$model5, input$
         } else {
             rebates <- 0
         }
-        purchase_price <- round(msrp*dataVariable$tax - rebates,2)
+        delivery_fees <- dataTables$delivery_fees[input$make5,"Amount"]
+        purchase_price <- round((msrp + delivery_fees) * dataVariable$tax - rebates,2)
         efficiency <- ifelse(engine=="BEV", dataVariable$bev_efficiency, dataVariable$ice_efficiency)
         fuel_rate <- ifelse(engine=="BEV", dataVariable$electricity_rate, dataVariable$gas_rate)
         fuel_increase <- ifelse(engine=="BEV", dataVariable$electricity_increase, dataVariable$gas_increase) 
@@ -400,7 +404,7 @@ comparisonData <- reactiveValues(df=NA)
 compute_ownership_cost <- function(purchase_price, kms, kept_years, fuel_per_100km, fuel_rate, fuel_increase, maintenance){
 #formula to get cost of ownership over X years
     fuel_cost <- kms * fuel_per_100km/100 * fuel_rate/100 * kept_years 
-    fuel_increase_cost <- kms * fuel_per_100km/100 * fuel_increase/100 * kept_years
+    fuel_increase_cost <- kms * fuel_per_100km/100 * fuel_increase/100 * (kept_years-1)
     maintenance_cost <- maintenance * kept_years
     ownership_cost <- purchase_price + fuel_cost + fuel_increase_cost + maintenance_cost
     ownership_cost <- round(ownership_cost,2)
@@ -444,12 +448,11 @@ output$CarCostplotTEST <- renderPlotly({
     colnames(df) <- make.unique(colnames(df))
     df_long <- melt(as.matrix(df[,-which(colnames(df)=="Year")]), na.rm=T , varnames="Year", value.name = "Ownership_Cost")
     colnames(df_long) <- c("Year", "Model", "Ownership_Cost")
-    TOTO <<- df
     p <- ggplot(df_long, aes(x=Year, y=Ownership_Cost, group=Model, color=Model)) + geom_line(lwd=1) + geom_point(size=3)
     p <- p +  scale_y_continuous(limits = c(0, max(df_long$Ownership_Cost + 5000))) + scale_x_continuous(limits = c(0, input$keep_years), breaks = seq(from=0, to=input$keep_years, by=5), minor_breaks = seq(from=0, to=input$keep_years, by=1))
     p <- p + theme_minimal() + ylab("Ownership Cost")
     p <- p + theme(panel.grid.major.x = element_line(size = 2), panel.grid.minor.x = element_line(color="red"))
-    ggplotly(p)  %>% layout(height = 800)
+    ggplotly(p, height = 800)
 })
 
 
