@@ -83,7 +83,7 @@ tabPanel("Table",
     dataTableOutput("CarCostTableTEST")
     ),
 tabPanel("Plot", 
-    plotOutput("CarCostplotTEST")
+    plotlyOutput("CarCostplotTEST")
     )      
 )
 
