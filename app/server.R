@@ -12,7 +12,7 @@ server <- function(input, output, session) {
 ##############################################################
 ######################### READ DATA ##########################
 ##############################################################
-  car_ini <- list(name=NA, MSRP=NA, rebates=NA, purchase_price=NA, engine=NA, efficiency=NA, fuel_rate=NA, fuel_increase=NA, maintenance=NA, yearly_kms=NA)
+  car_ini <- list(name="", MSRP=NA, rebates=NA, purchase_price=NA, engine=NA, efficiency=NA, fuel_rate=NA, fuel_increase=NA, maintenance=NA, yearly_kms=NA)
 
 	dataTables <- reactiveValues(car_data=NA, rebates=NA, taxes=NA, gas=NA, electricity=NA, fees=NA)
 	dataVariable <- reactiveValues(region=NA, federal_rebate=NA, federal_max_msrp=NA, region_rebate=NA, region_max_msrp=NA, tax=NA, gas_rate=NA, electricity_rate=NA, #province specific
@@ -43,7 +43,7 @@ server <- function(input, output, session) {
 observeEvent(input$info, {
     version <- read.table("VERSION")[1,1]
     shinyalert("EV Comparator App", HTML(paste0(version,"<br><br>
-      This document focuses on affordable Electric Vehicles (EVs) available in Canada. It is not meant to encompass all EVs on the market. A few Internal Combustion Engine (ICE) vehicles have been included to the list for comparison.<br><br>
+      This document focuses on affordable Battery Electric Vehicles (BEVs) available in Canada. It is not meant to encompass all EVs on the market. A few Internal Combustion Engine (ICE) vehicles have been included to the list for comparison.<br><br>
       Prices are in CAD.<br><br>
       <i>The information in this document are provided for information only with no guarantee of accuracy</i>")), type = "info", html=TRUE) 
 })
@@ -93,17 +93,7 @@ observe({
     dataVariable$tax <- 1 + as.numeric(dataTables$taxes["Federal",1]) + as.numeric(dataTables$taxes[input$region,1])
     dataVariable$gas_rate  <- as.numeric(dataTables$gas[input$region,1])
     dataVariable$electricity_rate <- as.numeric(dataTables$electricity[input$region,1])
-    
-    if(verbose){
-      print(paste0("federal_max_msrp: ", dataVariable$federal_max_msrp))
-      print(paste0("region_max_msrp: ", dataVariable$region_max_msrp))
-      print(paste0("federal_rebate: ", dataVariable$federal_rebate))
-      print(paste0("region_rebate: ", dataVariable$region_rebate))
-      print("***********")
-    }
-  }
-  
-
+  }  
 })
 
 
@@ -122,16 +112,20 @@ output$rebate_info <- renderUI({
 		                             paste0("Up to ",region_rebate,"$"),
 		                             "No rebate.")
 		federal_msrp_text <- ifelse(federal_msrp<Inf,
-                          		  paste0(" on battery electric vehicles (BEV) below $",federal_msrp,"."),
+                          		  paste0(" on BEVs below $",federal_msrp,"."),
                           		  "")
 		region_msrp_text <- ifelse(region_msrp>Inf,
-	                              paste0(" on battery electric vehicles (BEV) below $",region_msrp,"."),
+	                              paste0(" on BEVs below $",region_msrp,"."),
 	                              "")
+        max_rebate <- paste0("$",federal_rebate + region_rebate)
 		
-		HTML(paste0('<b>','Federal Rebate: </b>',federal_rebate_text, federal_msrp_text,'<br>',
-					'<b>','Provincial Rebate: </b>',region_rebate_text, region_msrp_text,'<br>'
+		HTML(paste0('<p style="font-size:20px;"><b>','You can benefit from up to <span style="background-color: #FFFF00">', max_rebate ,'</span> on the purchase of a new Battery Electric Vehicle (BEV)!','</b></p>',
+                    '<p style="font-size:14px;"><b>','Federal Rebate: </b>',federal_rebate_text, federal_msrp_text,'</p>',
+        			'<p style="font-size:14px;"><b>','Provincial Rebate: </b>',region_rebate_text, region_msrp_text,'</p><br>'
 		))
-	}
+	} else {
+        HTML('<p style="font-size:20px;"><b>Select your Province or Territory to see how much you can save on the purchase of a new Battery Electric Vehicles (BEV)!</b></p>')
+    }
 })
 
 ##############################################################
@@ -357,7 +351,7 @@ observeEvent(c(input$region, input$yearly_kms, input$make5, input$model5, input$
 #### DISPLAY VARIABLE TABLE #### 
 
 output$model_variable_info <- renderUI({
-  HTML(paste0('<b>','Change default values by double clicking on a cell.','</b>'))
+  HTML(paste0('<b>','Click on the tab to view and change default values. Double click on a cell to edit.','</b>'))
 })
 
 observe({
@@ -368,7 +362,7 @@ observe({
         c3 <- data.frame(c(carSelection$car3$purchase_price, carSelection$car3$yearly_kms, carSelection$car3$efficiency, carSelection$car3$fuel_rate, carSelection$car3$fuel_increase, carSelection$car3$maintenance))
         c4 <- data.frame(c(carSelection$car4$purchase_price, carSelection$car4$yearly_kms, carSelection$car4$efficiency, carSelection$car4$fuel_rate, carSelection$car4$fuel_increase, carSelection$car4$maintenance))
         c5 <- data.frame(c(carSelection$car5$purchase_price, carSelection$car5$yearly_kms, carSelection$car5$efficiency, carSelection$car5$fuel_rate, carSelection$car5$fuel_increase, carSelection$car5$maintenance))
-        car_selected_table <- cbind(c0,c1,c2,c3,c4,c5)
+        car_selected_table <- data.frame(cbind(c0,c1,c2,c3,c4,c5))
         colnames(car_selected_table) <- c("",carSelection$car1$name, carSelection$car2$name, carSelection$car3$name, carSelection$car4$name, carSelection$car5$name)
         rownames(car_selected_table) <- c0
         modelVariableTable$df <- car_selected_table   
@@ -378,9 +372,12 @@ observe({
 
 output$CarSelectedVariableTable <- renderDataTable({
     car_selected_table <- modelVariableTable$df
+    # not_editable_cols <- NULL
+    not_editable_cols <- which(sapply(c(input$trim1,input$trim2, input$trim3, input$trim4, input$trim5), function(x){identical(x,"")}, USE.NAMES=F))
+
     datatable(car_selected_table, colnames = rep("", ncol(car_selected_table)), rownames=FALSE, 
             selection = list(mode = 'single', target = 'column', selectable = c(-1)),
-            editable = list(target = "cell", disable = list(columns = c(0))),
+            editable = list(target = "cell", disable = list(columns = c(0, not_editable_cols))),
             options = list( dom = 't', ordering=FALSE, autoWidth = F,
                 columnDefs = list(list(className = 'text-center', width="150px", targets = c(0)),
                                 list(className = 'text-center', width="200px", targets = c(1,2,3,4,5))
@@ -392,22 +389,12 @@ output$CarSelectedVariableTable <- renderDataTable({
 observeEvent(input$CarSelectedVariableTable_cell_edit, {
     i <- input$CarSelectedVariableTable_cell_edit$row
     j <- input$CarSelectedVariableTable_cell_edit$col+1
-    modelVariableTable$df[i,j] <- input$CarSelectedVariableTable_cell_edit$value
+    val <- ifelse(input$CarSelectedVariableTable_cell_edit$value!="", input$CarSelectedVariableTable_cell_edit$value, NA)
+    modelVariableTable$df[i,j] <- suppressWarnings(as.numeric(val)) #coerce non-numeric to numeric or NA
 })
 
 
 #### CAR COMPARISON TABLE #### 
-
-
-compute_ownership_cost <- function(purchase_price, kms, kept_years, fuel_per_100km, fuel_rate, fuel_increase, maintenance){
-#formula to get cost of ownership over X years
-    fuel_cost <- kms * fuel_per_100km/100 * fuel_rate/100 * kept_years 
-    fuel_increase_cost <- kms * fuel_per_100km/100 * fuel_increase/100 * (kept_years-1)
-    maintenance_cost <- maintenance * kept_years
-    ownership_cost <- purchase_price + fuel_cost + fuel_increase_cost + maintenance_cost
-    ownership_cost <- round(ownership_cost,2)
-    return(ownership_cost)
-}
 
 observe({
     if(!is.null(input$keep_years)){
@@ -419,7 +406,7 @@ observe({
         for (i in 2:6){
             df[,i] <- compute_ownership_cost(purchase_price=car_selected_table["Purchase Price (CAD)",i], kms=input$yearly_kms, kept_years=seq_len(input$keep_years), fuel_per_100km=car_selected_table["Efficency (L/kWh per 100km)",i], fuel_rate=car_selected_table["Fuel rate (CAD per L or kWh)",i], fuel_increase=car_selected_table["Fuel price increase (CAD)",i], maintenance=car_selected_table["Yearly Maintenance (CAD)",i])
         }
-        colnames(df) <- c("Year", carSelection$car1$name, carSelection$car2$name, carSelection$car3$name, carSelection$car4$name, carSelection$car5$name)
+        colnames(df) <- c("Year",carSelection$car1$name, carSelection$car2$name, carSelection$car3$name, carSelection$car4$name, carSelection$car5$name)
         comparisonData$cost_over_years <- df
 
         #final cost after resale
@@ -430,15 +417,14 @@ observe({
         depreciation_cost <-  purchase_price - resale_value #how much of the car value was lost
         operational_cost <- final_ownership_cost - purchase_price #how much did it cost to use the car
         final_cost <- round(final_ownership_cost - resale_value,2)
-        df2 <- matrix(c(
+        df2 <- data.frame(matrix(c(
             "Ownership Cost", final_ownership_cost, 
             "Remaining Value", resale_value, 
             "Depreciation Cost", depreciation_cost,
             "Operational Cost", operational_cost,
-            "Final Cost", final_cost), nrow=5, byrow=T)
+            "Final Cost", final_cost), nrow=5, byrow=T))
         rownames(df2) <- c("Ownership Cost", "Remaining Value","Depreciation Cost","Operational Cost","Final Cost")
         colnames(df2) <- c("What", carSelection$car1$name, carSelection$car2$name, carSelection$car3$name, carSelection$car4$name, carSelection$car5$name)
-        TOTO <<- df2
         comparisonData$final_cost <- df2
     }
 })
@@ -459,6 +445,7 @@ output$CarComparisonTable <- renderDataTable({
 
 output$CarFinalCostTable <- renderDataTable({
   car_final_cost_table <- comparisonData$final_cost[c("Ownership Cost", "Remaining Value","Final Cost"),]
+  colnames(car_final_cost_table)[1] <- ""
   datatable(car_final_cost_table, rownames=FALSE, 
         selection = list(mode = 'single'),
         options = list(ordering=FALSE, autoWidth = F, pageLength = 20, dom = 't',
@@ -469,7 +456,6 @@ output$CarFinalCostTable <- renderDataTable({
         )                
     ) 
 })
-
 
 
 #### CAR COMPARISON PLOT #### 
@@ -519,7 +505,7 @@ output$rebate_table <- renderDT({
   rebate_table <- rebate_table[-grep("Source", rebate_table$Region),,drop=FALSE]
   colnames(rebate_table) <- c("Region", "Maximum Amount", "If MSRP below...", "Condition")
   rebate_table
-}, selection = 'single', rownames=FALSE)
+}, selection = 'single', rownames=FALSE, options = list(pageLength = 20, autoWidth = F))
 
 output$rebate_source <- renderUI({
   rebate_table <- dataTables$rebates
@@ -533,7 +519,7 @@ output$rebate_source <- renderUI({
     tax_table <- tax_table[-grep("Source", rownames(tax_table)),,drop=FALSE]
     tax_table$Region <- rownames(tax_table)
     tax_table[,2:1]
-  }, selection = 'single', rownames=FALSE)
+  }, selection = 'single', rownames=FALSE, options = list(pageLength = 20, autoWidth = F))
   
   output$tax_source <- renderUI({
     tax_table <- dataTables$taxes
@@ -547,7 +533,7 @@ output$rebate_source <- renderUI({
     gas_table <- gas_table[-grep("Source", rownames(gas_table)),,drop=FALSE]
     gas_table$Region <- rownames(gas_table)
     gas_table[,2:1]
-  }, selection = 'single', rownames=FALSE)
+  }, selection = 'single', rownames=FALSE, options = list(pageLength = 20, autoWidth = F))
   
   output$gas_source <- renderUI({
     gas_table <- dataTables$gas
@@ -561,7 +547,7 @@ output$rebate_source <- renderUI({
     electricity_table <- electricity_table[-grep("Source", rownames(electricity_table)),,drop=FALSE]
     electricity_table$Region <- rownames(electricity_table)
     electricity_table[,2:1]
-  }, selection = 'single', rownames=FALSE)
+  }, selection = 'single', rownames=FALSE, options = list(pageLength = 20, autoWidth = F))
   
   output$electricity_source <- renderUI({
     electricity_table <- dataTables$electricity
@@ -574,7 +560,7 @@ output$rebate_source <- renderUI({
     delivery_fees_table <- dataTables$delivery_fees
     delivery_fees_table$Region <- rownames(delivery_fees_table)
     delivery_fees_table[,2:1]
-  }, selection = 'single', rownames=FALSE)
+  }, selection = 'single', rownames=FALSE, options = list(pageLength = 20, autoWidth = F))
   
   #### DEFAULT MODEL VARIABLES #### 
   output$default_model_variable_table <- renderDT({
@@ -589,6 +575,6 @@ output$rebate_source <- renderUI({
       model_variable_table <- data.frame(Parameters=names(default_variables),
                                          Values=default_variables)
       model_variable_table
-  }, selection = 'single', rownames=FALSE, options = list(autoWidth = T))
+  }, selection = 'single', rownames=FALSE, options = list(pageLength = 20, autoWidth = F))
   
 }

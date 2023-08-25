@@ -42,9 +42,9 @@ ui <- dashboardPage(skin = "green",
 ############################
         tabItem(tabName = "setup",
             uiOutput("setupUI"),
-            uiOutput("rebate_info"),
-            uiOutput("modelVariableUI")
-
+            uiOutput("modelVariableUI"),
+            div(style = "height:20px"),
+            uiOutput("rebate_info")
         ),
 
 ############################
@@ -61,33 +61,42 @@ ui <- dashboardPage(skin = "green",
 
 tabItem(tabName = "compare",
         fluidRow(
-          # column(6,
-          #   box(uiOutput("modelVariableUI"))
-          # ),
-          column(12, 
-            fluidRow(
-                column(2,uiOutput("CarSelection0UI")), #, DTOutput("RownamesCarCostTable")),
-                column(2,uiOutput("CarMake1UI"), uiOutput("CarModel1UI"), uiOutput("CarTrim1UI")), #, DTOutput("CarCostTable1")),
-                column(2,uiOutput("CarMake2UI"), uiOutput("CarModel2UI"), uiOutput("CarTrim2UI")), #, DTOutput("CarCostTable2")),
-                column(2,uiOutput("CarMake3UI"), uiOutput("CarModel3UI"), uiOutput("CarTrim3UI")), #, DTOutput("CarCostTable3")),
-                column(2,uiOutput("CarMake4UI"), uiOutput("CarModel4UI"), uiOutput("CarTrim4UI")), #, DTOutput("CarCostTable4")),
-                column(2,uiOutput("CarMake5UI"), uiOutput("CarModel5UI"), uiOutput("CarTrim5UI")) #, DTOutput("CarCostTable5"))
-            )
-        ),
 
-            dataTableOutput("CarSelectedVariableTable"),
+        #Car selection UI
+            column(12, 
+                fluidRow(
+                    column(2,uiOutput("CarSelection0UI")), #, DTOutput("RownamesCarCostTable")),
+                    column(2,uiOutput("CarMake1UI"), uiOutput("CarModel1UI"), uiOutput("CarTrim1UI")), #, DTOutput("CarCostTable1")),
+                    column(2,uiOutput("CarMake2UI"), uiOutput("CarModel2UI"), uiOutput("CarTrim2UI")), #, DTOutput("CarCostTable2")),
+                    column(2,uiOutput("CarMake3UI"), uiOutput("CarModel3UI"), uiOutput("CarTrim3UI")), #, DTOutput("CarCostTable3")),
+                    column(2,uiOutput("CarMake4UI"), uiOutput("CarModel4UI"), uiOutput("CarTrim4UI")), #, DTOutput("CarCostTable4")),
+                    column(2,uiOutput("CarMake5UI"), uiOutput("CarModel5UI"), uiOutput("CarTrim5UI")) #, DTOutput("CarCostTable5"))
+                )
+            ),
+
+        #Model variables
+        column(12, 
+            div(style = "height:20px"),
             uiOutput("model_variable_info"),
+            bsCollapse(id = "TEST", open = NULL,
+                bsCollapsePanel("Model Variables", dataTableOutput("CarSelectedVariableTable"), style="info")
+            ),            
+            div(style = "height:20px")
+        ),
         
-tabsetPanel(
-tabPanel("Table", 
-    fluidRow(
-        dataTableOutput("CarComparisonTable"),
-        dataTableOutput("CarFinalCostTable")
-    )
-),
-tabPanel("Plot", 
-    plotlyOutput("CarComparisonPlot")
-    )      
+        #Comparison table and plot
+        column(12,
+            tabsetPanel(
+                tabPanel("Table", 
+                    fluidRow(
+                        dataTableOutput("CarComparisonTable"),
+                        dataTableOutput("CarFinalCostTable")
+                    )
+                ),
+                tabPanel("Plot", 
+                    plotlyOutput("CarComparisonPlot")
+                )      
+            )
 )
 
         )
@@ -104,12 +113,12 @@ tabPanel("Plot",
 
         tabItem(tabName = "params",
                 tabsetPanel(
-                  tabPanel("Rebates",  DTOutput("rebate_table"), uiOutput("rebate_source")),
-                  tabPanel("Taxes",  DTOutput("tax_table"), uiOutput("tax_source")),
-                  tabPanel("Gas",  DTOutput("gas_table"), uiOutput("gas_source")),
-                  tabPanel("Electricity",  DTOutput("electricity_table"), uiOutput("electricity_source")),
-                  tabPanel("Delivery Fees",  DTOutput("delivery_fees_table")),
-                  tabPanel("Default Model Variables",  DTOutput("default_model_variable_table"))
+                  tabPanel("Rebates",  DTOutput("rebate_table", width="800px"), uiOutput("rebate_source")),
+                  tabPanel("Taxes",  DTOutput("tax_table", width="600px"), uiOutput("tax_source")),
+                  tabPanel("Gas",  DTOutput("gas_table", width="600px"), uiOutput("gas_source")),
+                  tabPanel("Electricity",  DTOutput("electricity_table", width="600px"), uiOutput("electricity_source")),
+                  tabPanel("Delivery Fees",  DTOutput("delivery_fees_table", width="600px")),
+                  tabPanel("Default Model Variables",  DTOutput("default_model_variable_table", width="600px"))
                 )
         )
 
