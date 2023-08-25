@@ -411,6 +411,8 @@ compute_ownership_cost <- function(purchase_price, kms, kept_years, fuel_per_100
 
 observe({
     if(!is.null(input$keep_years)){
+
+        #Cost over X years
         df <- data.frame(matrix(ncol=6, nrow=input$keep_years))
         df[,1] <- seq_len(input$keep_years)
         car_selected_table <- modelVariableTable$df
@@ -420,13 +422,23 @@ observe({
         colnames(df) <- c("Year", carSelection$car1$name, carSelection$car2$name, carSelection$car3$name, carSelection$car4$name, carSelection$car5$name)
         comparisonData$cost_over_years <- df
 
-TOTO <<- df
-TOTO2 <<- car_selected_table
+        #final cost after resale
+        purchase_price <- as.numeric(car_selected_table["Purchase Price (CAD)",-1])
         final_ownership_cost <- round(as.numeric(tail(df, 1)[-1]),2)
         depreciation_x_years <- (1 - dataVariable$depreciation_rate) ^ input$keep_years
-        resale_value <- round(as.numeric(car_selected_table["Purchase Price (CAD)",-1] * depreciation_x_years),2)
+        resale_value <- round(as.numeric(purchase_price * depreciation_x_years),2)
+        depreciation_cost <-  purchase_price - resale_value #how much of the car value was lost
+        operational_cost <- final_ownership_cost - purchase_price #how much did it cost to use the car
         final_cost <- round(final_ownership_cost - resale_value,2)
-        df2 <- matrix(c("Ownership Cost", final_ownership_cost, "Remaining Value", resale_value, "Final Cost", final_cost), nrow=3, byrow=T)
+        df2 <- matrix(c(
+            "Ownership Cost", final_ownership_cost, 
+            "Remaining Value", resale_value, 
+            "Depreciation Cost", depreciation_cost,
+            "Operational Cost", operational_cost,
+            "Final Cost", final_cost), nrow=5, byrow=T)
+        rownames(df2) <- c("Ownership Cost", "Remaining Value","Depreciation Cost","Operational Cost","Final Cost")
+        colnames(df2) <- c("What", carSelection$car1$name, carSelection$car2$name, carSelection$car3$name, carSelection$car4$name, carSelection$car5$name)
+        TOTO <<- df2
         comparisonData$final_cost <- df2
     }
 })
@@ -446,7 +458,7 @@ output$CarComparisonTable <- renderDataTable({
 })
 
 output$CarFinalCostTable <- renderDataTable({
-  car_final_cost_table <- comparisonData$final_cost
+  car_final_cost_table <- comparisonData$final_cost[c("Ownership Cost", "Remaining Value","Final Cost"),]
   datatable(car_final_cost_table, rownames=FALSE, 
         selection = list(mode = 'single'),
         options = list(ordering=FALSE, autoWidth = F, pageLength = 20, dom = 't',
@@ -462,20 +474,40 @@ output$CarFinalCostTable <- renderDataTable({
 
 #### CAR COMPARISON PLOT #### 
 
-output$CarComparisonPlot <- renderPlotly({
+car_comparison_plot_data <- reactive({
     df <- comparisonData$cost_over_years
     colnames(df) <- make.unique(colnames(df))
     df_long <- melt(as.matrix(df[,-which(colnames(df)=="Year")]), na.rm=T , varnames="Year", value.name = "Ownership_Cost")
     colnames(df_long) <- c("Year", "Model", "Ownership_Cost")
     p <- ggplot(df_long, aes(x=Year, y=Ownership_Cost, group=Model, color=Model)) + geom_line(lwd=1) + geom_point(size=3)
     p <- p +  scale_y_continuous(limits = c(0, max(df_long$Ownership_Cost + 5000))) + scale_x_continuous(limits = c(1, input$keep_years), breaks = seq(from=0, to=input$keep_years, by=5), minor_breaks = seq(from=0, to=input$keep_years, by=1))
-    p <- p + theme_minimal() + ylab("Ownership Cost")
-    p <- p + theme(panel.grid.major.x = element_line(size = 2), panel.grid.minor.x = element_line(color="red"))
-    ggplotly(p, height = 800)
+    p <- p + theme_minimal() + ylab("Ownership Cost") + xlab("Years")
+    p <- p + theme(panel.grid.major.x = element_line(size = 2), panel.grid.minor.x = element_line(color="grey"))
+    p
+    })
+
+car_final_cost_plot_data <- reactive({
+    df <- comparisonData$final_cost[c("Depreciation Cost",  "Operational Cost"),]
+    colnames(df) <- make.unique(colnames(df))
+    df_long <- melt(as.matrix(df[,-which(colnames(df)=="What")]), na.rm=T , varnames="What")
+    colnames(df_long) <- c("What", "Model", "Cost")
+    df_long$Cost <- as.numeric(df_long$Cost)
+    p <- ggplot(df_long, aes(x=Model, y=Cost, fill=What)) + geom_bar(stat = "identity")
+
+    p <- p + theme_minimal() + ylab("Cost") + xlab(NULL)
+    p <- p + theme(panel.grid.major.y = element_line(size = 2), panel.grid.major.x=element_blank(), panel.grid.minor.x=element_blank(),
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+    })
+
+output$CarComparisonPlot <- renderPlotly({
+    p1 <- car_comparison_plot_data() 
+    p2 <- car_final_cost_plot_data()
+
+    gp1 <- ggplotly(p1, height=800)
+    gp2 <- ggplotly(p2, height=800)
+    sp <- subplot(gp1,gp2, widths = c(0.8,0.2), shareY = F)
+    sp %>% layout(legend = list(orientation = 'h', title="none", y=1, margin = list(l = 20, r = 100)))
 })
-
-
-
 
 ##############################################################
 ######################### PARAMETERS #########################
