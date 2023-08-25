@@ -19,7 +19,7 @@ server <- function(input, output, session) {
                                   ice_efficiency=8, ice_maintenance=350, bev_efficiency=15, bev_maintenance=150, depreciation_rate=0.13, gas_increase=5, electricity_increase=1) #global
     carSelection <- reactiveValues(car1=car_ini, car2=car_ini, car3=car_ini, car4=car_ini, car5=car_ini)
     modelVariableTable <- reactiveValues(df=NA) #store variable needed for computation
-    comparisonData <- reactiveValues(df=NA)
+    comparisonData <- reactiveValues(cost_over_years=NA, final_cost=NA)
 
 	observe({
     #car_data
@@ -140,8 +140,6 @@ output$rebate_info <- renderUI({
 
 output$car_table <- renderDT({
 	car_list <- dataTables$car_data
-        TOTO1 <<- car_list
-
 	car_list <- car_list[,-which(colnames(car_list)=="Link")]
 	car_list$delivery_fees <- sapply(car_list$Make, function(x){dataTables$delivery_fees[x,1]})
 	car_list$delivery_fees[is.na(car_list$delivery_fees)] <- 0
@@ -155,7 +153,6 @@ output$car_table <- renderDT({
 	if(is.null(input$region) | identical(input$region,'')){
 	  car_list$after_tax_fees <- car_list$after_rebates<- "-"
 	}
-	TOTO2 <<- car_list
 	colnames(car_list) <- c("Make", "Model", "Trim", "Engine", "MSRP", "Traction", "Range (km)", "AC Charging rate (kw)", "DC Fast Charging rate (kW)", "HP", "Delivery Fees", "Price after Tax&Feess", "Federal Rebate", paste0(dataVariable$region," rebate"), "Purchase Price")
 	car_list
 	
@@ -363,7 +360,6 @@ output$model_variable_info <- renderUI({
   HTML(paste0('<b>','Change default values by double clicking on a cell.','</b>'))
 })
 
-
 observe({
     if(!is.null(input$yearly_kms)){
         c0 <- c("Purchase Price (CAD)", "Kms driven (yearly)", "Efficency (L/kWh per 100km)", "Fuel rate (CAD per L or kWh)", "Fuel price increase (CAD)", "Yearly Maintenance (CAD)")
@@ -422,14 +418,22 @@ observe({
             df[,i] <- compute_ownership_cost(purchase_price=car_selected_table["Purchase Price (CAD)",i], kms=input$yearly_kms, kept_years=seq_len(input$keep_years), fuel_per_100km=car_selected_table["Efficency (L/kWh per 100km)",i], fuel_rate=car_selected_table["Fuel rate (CAD per L or kWh)",i], fuel_increase=car_selected_table["Fuel price increase (CAD)",i], maintenance=car_selected_table["Yearly Maintenance (CAD)",i])
         }
         colnames(df) <- c("Year", carSelection$car1$name, carSelection$car2$name, carSelection$car3$name, carSelection$car4$name, carSelection$car5$name)
-        comparisonData$df <- df
+        comparisonData$cost_over_years <- df
+
+TOTO <<- df
+TOTO2 <<- car_selected_table
+        final_ownership_cost <- round(as.numeric(tail(df, 1)[-1]),2)
+        depreciation_x_years <- (1 - dataVariable$depreciation_rate) ^ input$keep_years
+        resale_value <- round(as.numeric(car_selected_table["Purchase Price (CAD)",-1] * depreciation_x_years),2)
+        final_cost <- round(final_ownership_cost - resale_value,2)
+        df2 <- matrix(c("Ownership Cost", final_ownership_cost, "Remaining Value", resale_value, "Final Cost", final_cost), nrow=3, byrow=T)
+        comparisonData$final_cost <- df2
     }
 })
 
 
 output$CarComparisonTable <- renderDataTable({
-  car_comparison_table <- comparisonData$df
-  # car_comparison_table <- round(car_comparison_table[,-1],2)
+  car_comparison_table <- comparisonData$cost_over_years
   datatable(car_comparison_table, rownames=FALSE, 
         selection = list(mode = 'single'),
         options = list(ordering=FALSE, autoWidth = F, pageLength = 20, dom = 't',
@@ -441,12 +445,25 @@ output$CarComparisonTable <- renderDataTable({
     ) 
 })
 
+output$CarFinalCostTable <- renderDataTable({
+  car_final_cost_table <- comparisonData$final_cost
+  datatable(car_final_cost_table, rownames=FALSE, 
+        selection = list(mode = 'single'),
+        options = list(ordering=FALSE, autoWidth = F, pageLength = 20, dom = 't',
+            columnDefs = list(list(className = 'dt-head-center', targets = '_all'), #centered colnames
+                              list(className = 'text-center', width="150px", targets = c(0)), #defined first column
+                              list(className = 'text-center', width="200px", targets = c(1,2,3,4,5)) #defined remaining columns
+            ) 
+        )                
+    ) 
+})
+
+
 
 #### CAR COMPARISON PLOT #### 
 
-
 output$CarComparisonPlot <- renderPlotly({
-    df <- comparisonData$df
+    df <- comparisonData$cost_over_years
     colnames(df) <- make.unique(colnames(df))
     df_long <- melt(as.matrix(df[,-which(colnames(df)=="Year")]), na.rm=T , varnames="Year", value.name = "Ownership_Cost")
     colnames(df_long) <- c("Year", "Model", "Ownership_Cost")

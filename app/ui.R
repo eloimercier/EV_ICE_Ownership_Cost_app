@@ -80,8 +80,11 @@ tabItem(tabName = "compare",
         
 tabsetPanel(
 tabPanel("Table", 
-    dataTableOutput("CarComparisonTable")
-    ),
+    fluidRow(
+        dataTableOutput("CarComparisonTable"),
+        dataTableOutput("CarFinalCostTable")
+    )
+),
 tabPanel("Plot", 
     plotlyOutput("CarComparisonPlot")
     )      
