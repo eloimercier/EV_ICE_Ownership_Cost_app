@@ -21,7 +21,7 @@ ui <- dashboardPage(skin = "green",
     dashboardSidebar(
       tags$style("@import url(https://use.fontawesome.com/releases/v5.7.2/css/all.css);"), #to load all fonts
         sidebarMenu(
-            menuItem("Setup", tabName = "setup", icon = icon("circle-info")),
+            menuItem("Setup", tabName = "setup", icon = icon("user")),
             menuItem("Car List", tabName = "carlist", icon = icon("list")),
             menuItem("Compare", tabName = "compare", icon = icon("chart-line")),
             menuItem("Parameters", tabName = "params", icon = icon("database"))
@@ -80,10 +80,10 @@ tabItem(tabName = "compare",
         
 tabsetPanel(
 tabPanel("Table", 
-    dataTableOutput("CarCostTableTEST")
+    dataTableOutput("CarComparisonTable")
     ),
 tabPanel("Plot", 
-    plotlyOutput("CarCostplotTEST")
+    plotlyOutput("CarComparisonPlot")
     )      
 )
 

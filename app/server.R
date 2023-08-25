@@ -19,14 +19,14 @@ server <- function(input, output, session) {
                                   ice_efficiency=8, ice_maintenance=350, bev_efficiency=15, bev_maintenance=150, depreciation_rate=0.13, gas_increase=5, electricity_increase=1) #global
     carSelection <- reactiveValues(car1=car_ini, car2=car_ini, car3=car_ini, car4=car_ini, car5=car_ini)
     modelVariableTable <- reactiveValues(df=NA) #store variable needed for computation
+    comparisonData <- reactiveValues(df=NA)
 
 	observe({
-
     #car_data
 		car_data <- read.xlsx("data/EV_list_Canada.xlsx", sheet="Cars", check.names = TRUE)
-    rownames(car_data) <- paste(car_data$Make, car_data$Model, car_data$Trim)
-    colnames(car_data) <- c("Make","Model", "Trim", "Engine", "MSRP (CAD)", "Link")
-    dataTables$car_data <- car_data
+        rownames(car_data) <- paste(car_data$Make, car_data$Model, car_data$Trim)
+        colnames(car_data) <- c("Make","Model", "Trim", "Engine", "MSRP (CAD)", "Link", "Traction","Range (km)", "AC Charging rate (kw)", "DC Fast Charging rate (kW)","HP")
+        dataTables$car_data <- car_data
 
 		dataTables$rebates <- read.xlsx("data/EV_list_Canada.xlsx", sheet="Rebates")
 		dataTables$taxes <- read.xlsx("data/EV_list_Canada.xlsx", sheet="Taxes", rowNames = TRUE)
@@ -81,10 +81,12 @@ observe({
     
     if(input$region %in% region_with_multiple_rebate){
       dataVariable$region_rebate <-  as.numeric(rebates[rebates[,1] == input$region & rebates[,4]==input$income,"Maximum.amount",drop=TRUE])
-      dataVariable$region_max_msrp <-  as.numeric(rebates[rebates[,1] == input$region & rebates[,4]==input$income,"If.MSRP.below...",drop=TRUE])
+      region_max_msrp <-  as.numeric(rebates[rebates[,1] == input$region & rebates[,4]==input$income,"If.MSRP.below...",drop=TRUE])
+      dataVariable$region_max_msrp <- ifelse(is.na(region_max_msrp),Inf, region_max_msrp)
     } else {
       dataVariable$region_rebate <-  as.numeric(rebates[rebates[,1] == input$region,"Maximum.amount",drop=TRUE])
-      dataVariable$region_max_msrp <-  as.numeric(rebates[rebates[,1] == input$region,"If.MSRP.below...",drop=TRUE])
+      region_max_msrp <-  as.numeric(rebates[rebates[,1] == input$region,"If.MSRP.below...",drop=TRUE])
+      dataVariable$region_max_msrp <- ifelse(is.na(region_max_msrp),Inf, region_max_msrp)
     }
 
     #Set rates
@@ -119,11 +121,11 @@ output$rebate_info <- renderUI({
 		region_rebate_text <- ifelse(region_rebate>0,
 		                             paste0("Up to ",region_rebate,"$"),
 		                             "No rebate.")
-		federal_msrp_text <- ifelse(!is.na(federal_msrp),
-                          		  paste0(" on vehicles below $",federal_msrp,"."),
+		federal_msrp_text <- ifelse(federal_msrp<Inf,
+                          		  paste0(" on battery electric vehicles (BEV) below $",federal_msrp,"."),
                           		  "")
-		region_msrp_text <- ifelse(!is.na(region_msrp),
-	                              paste0(" on vehicles below $",region_msrp,"."),
+		region_msrp_text <- ifelse(region_msrp>Inf,
+	                              paste0(" on battery electric vehicles (BEV) below $",region_msrp,"."),
 	                              "")
 		
 		HTML(paste0('<b>','Federal Rebate: </b>',federal_rebate_text, federal_msrp_text,'<br>',
@@ -138,10 +140,12 @@ output$rebate_info <- renderUI({
 
 output$car_table <- renderDT({
 	car_list <- dataTables$car_data
+        TOTO1 <<- car_list
+
 	car_list <- car_list[,-which(colnames(car_list)=="Link")]
 	car_list$delivery_fees <- sapply(car_list$Make, function(x){dataTables$delivery_fees[x,1]})
 	car_list$delivery_fees[is.na(car_list$delivery_fees)] <- 0
-	car_list$after_tax_fees <- (car_list[,"MSRP (CAD)"] + car_list$delivery_fees) * (1+dataVariable$tax) #(msrp + delivery) * taxes
+	car_list$after_tax_fees <- (car_list[,"MSRP (CAD)"] + car_list$delivery_fees) * (dataVariable$tax) 
 
 	car_list$vehicle_federal_rebate <- ifelse(car_list[,"MSRP (CAD)"]<=dataVariable$federal_max_msrp & car_list$Engine=="BEV", dataVariable$federal_rebate ,0)
 	car_list$vehicle_region_rebate <- ifelse(car_list[,"MSRP (CAD)"]<=dataVariable$region_max_msrp & car_list$Engine=="BEV", dataVariable$region_rebate ,0)
@@ -151,14 +155,13 @@ output$car_table <- renderDT({
 	if(is.null(input$region) | identical(input$region,'')){
 	  car_list$after_tax_fees <- car_list$after_rebates<- "-"
 	}
-	
-	colnames(car_list) <- c("Make","Model", "Trim", "Engine", "MSRP", "Delivery fees", "After tax and fees", "Federal rebate", "Region rebate", "After rebates")
-	colnames(car_list)[9] <- paste0(dataVariable$region," rebate")
+	TOTO2 <<- car_list
+	colnames(car_list) <- c("Make", "Model", "Trim", "Engine", "MSRP", "Traction", "Range (km)", "AC Charging rate (kw)", "DC Fast Charging rate (kW)", "HP", "Delivery Fees", "Price after Tax&Feess", "Federal Rebate", paste0(dataVariable$region," rebate"), "Purchase Price")
 	car_list
 	
-}, selection = 'single', rownames=FALSE, extensions = 'Buttons', options = list(dom = 'Bfrtip', buttons = I('colvis'), columnDefs = list(
-  list(targets = c(6,8,9), visible = FALSE)
-)))
+}, selection = 'single', rownames=FALSE, extensions = 'Buttons', filter="top", 
+        options = list(pageLength = 20, lengthMenu = c(10, 20, 50, 100), dom = 'Bfrtlip', buttons = I('colvis'), columnDefs = list(list(targets = c(5,7,10,11,12,13), visible = FALSE)))
+)
 
 ##############################################################
 ######################### COMPARISON #########################
@@ -399,7 +402,6 @@ observeEvent(input$CarSelectedVariableTable_cell_edit, {
 
 #### CAR COMPARISON TABLE #### 
 
-comparisonData <- reactiveValues(df=NA)
 
 compute_ownership_cost <- function(purchase_price, kms, kept_years, fuel_per_100km, fuel_rate, fuel_increase, maintenance){
 #formula to get cost of ownership over X years
@@ -425,7 +427,7 @@ observe({
 })
 
 
-output$CarCostTableTEST <- renderDataTable({
+output$CarComparisonTable <- renderDataTable({
   car_comparison_table <- comparisonData$df
   # car_comparison_table <- round(car_comparison_table[,-1],2)
   datatable(car_comparison_table, rownames=FALSE, 
@@ -443,13 +445,13 @@ output$CarCostTableTEST <- renderDataTable({
 #### CAR COMPARISON PLOT #### 
 
 
-output$CarCostplotTEST <- renderPlotly({
+output$CarComparisonPlot <- renderPlotly({
     df <- comparisonData$df
     colnames(df) <- make.unique(colnames(df))
     df_long <- melt(as.matrix(df[,-which(colnames(df)=="Year")]), na.rm=T , varnames="Year", value.name = "Ownership_Cost")
     colnames(df_long) <- c("Year", "Model", "Ownership_Cost")
     p <- ggplot(df_long, aes(x=Year, y=Ownership_Cost, group=Model, color=Model)) + geom_line(lwd=1) + geom_point(size=3)
-    p <- p +  scale_y_continuous(limits = c(0, max(df_long$Ownership_Cost + 5000))) + scale_x_continuous(limits = c(0, input$keep_years), breaks = seq(from=0, to=input$keep_years, by=5), minor_breaks = seq(from=0, to=input$keep_years, by=1))
+    p <- p +  scale_y_continuous(limits = c(0, max(df_long$Ownership_Cost + 5000))) + scale_x_continuous(limits = c(1, input$keep_years), breaks = seq(from=0, to=input$keep_years, by=5), minor_breaks = seq(from=0, to=input$keep_years, by=1))
     p <- p + theme_minimal() + ylab("Ownership Cost")
     p <- p + theme(panel.grid.major.x = element_line(size = 2), panel.grid.minor.x = element_line(color="red"))
     ggplotly(p, height = 800)
