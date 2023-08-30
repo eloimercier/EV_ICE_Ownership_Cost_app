@@ -78,7 +78,7 @@ tabItem(tabName = "compare",
         column(12, 
             div(style = "height:20px"),
             uiOutput("model_variable_info"),
-            bsCollapse(id = "TEST", open = NULL,
+            bsCollapse(id = "model_variable_table_collapsible", open = NULL,
                 bsCollapsePanel("Model Variables", dataTableOutput("CarSelectedVariableTable"), style="info")
             ),            
             div(style = "height:20px")
