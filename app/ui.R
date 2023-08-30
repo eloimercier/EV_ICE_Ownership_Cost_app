@@ -52,7 +52,7 @@ ui <- dashboardPage(skin = "green",
 ############################
 
         tabItem(tabName = "carlist",
-           DTOutput("car_table")
+           dataTableOutput("car_table")
         ),
 
 ############################
@@ -90,6 +90,7 @@ tabItem(tabName = "compare",
                 tabPanel("Table", 
                     fluidRow(
                         dataTableOutput("CarComparisonTable"),
+                        div(style = "height:20px"),
                         dataTableOutput("CarFinalCostTable")
                     )
                 ),

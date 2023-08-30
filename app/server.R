@@ -144,7 +144,7 @@ output$rebate_info <- renderUI({
 ######################### CAR LIST ##########################
 ##############################################################
 
-output$car_table <- renderDT({
+output$car_table <- renderDataTable({
 	car_list <- dataTables$car_data
 	car_list <- car_list[,-which(colnames(car_list)=="Link")]
 
@@ -169,11 +169,10 @@ output$car_table <- renderDT({
 	  car_list$after_tax_fees <- car_list$after_rebates<- "-"
 	}
 	colnames(car_list) <- c("Make", "Model", "Trim", "Engine", "MSRP", "Traction", "Range (km)", "AC Charging rate (kw)", "DC Fast Charging rate (kW)", "HP", "Delivery Fees", "Price after Tax&Feess", "Federal Rebate", paste0(dataVariable$region," rebate"), "Purchase Price")
-	car_list
+	datatable(car_list, selection = 'single', rownames=FALSE, extensions = 'Buttons', filter="top", 
+        options = list(pageLength = 20, lengthMenu = c(10, 20, 50, 100), dom = 'Bfrtlip', buttons = I('colvis'), columnDefs = list(list(targets = c(5,7,10,11,12,13), visible = FALSE))))
 	
-}, selection = 'single', rownames=FALSE, extensions = 'Buttons', filter="top", 
-        options = list(pageLength = 20, lengthMenu = c(10, 20, 50, 100), dom = 'Bfrtlip', buttons = I('colvis'), columnDefs = list(list(targets = c(5,7,10,11,12,13), visible = FALSE)))
-)
+})
 
 ##############################################################
 ######################### COMPARISON #########################
@@ -465,12 +464,11 @@ observe({
 
 
 output$CarComparisonTable <- renderDataTable({
-    car_comparison_table <- comparisonData$cost_over_years
+    car_comparison_table <- comparisonData$cost_over_years  
     for (i in 2:6){
         car_comparison_table[,i] <- format_currency(values=car_comparison_table[,i], unit_data=countryUnitData, unit_target="unit")
     }
-
-  datatable(car_comparison_table, rownames=FALSE, 
+  df <- datatable(car_comparison_table, rownames=FALSE, 
         selection = list(mode = 'single'),
         options = list(ordering=FALSE, autoWidth = F, pageLength = 20, dom = 't',
             columnDefs = list(list(className = 'dt-head-center', targets = '_all'), #centered colnames
@@ -479,16 +477,18 @@ output$CarComparisonTable <- renderDataTable({
             ) 
         )                
     ) 
+  df <- df %>% formatStyle("Year",target = 'row', backgroundColor = styleEqual(input$keep_years, '#fdf573', default="white"), fontWeight=styleEqual(input$keep_years, "bold"))
+  df
 })
+
 
 output$CarFinalCostTable <- renderDataTable({
     car_final_cost_table <- comparisonData$final_cost[c("Ownership Cost", "Remaining Value","Final Cost"),]
       for (i in 2:6){
         car_final_cost_table[,i] <- format_currency(values=car_final_cost_table[,i], unit_data=countryUnitData, unit_target="unit")
     }
-
-  colnames(car_final_cost_table)[1] <- ""
-  datatable(car_final_cost_table, rownames=FALSE, 
+  colnames(car_final_cost_table)[1] <- "Cost after resale"
+  df <- datatable(car_final_cost_table, rownames=FALSE, 
         selection = list(mode = 'single'),
         options = list(ordering=FALSE, autoWidth = F, pageLength = 20, dom = 't',
             columnDefs = list(list(className = 'dt-head-center', targets = '_all'), #centered colnames
@@ -496,7 +496,10 @@ output$CarFinalCostTable <- renderDataTable({
                               list(className = 'text-center', width="200px", targets = c(1,2,3,4,5)) #defined remaining columns
             ) 
         )                
-    ) 
+    )
+    df <- df %>% formatStyle("Cost after resale", target = 'row', backgroundColor = styleEqual("Final Cost", '#fff300',  default="white"), fontWeight=styleEqual("Final Cost", "bold"))
+    df
+ 
 })
 
 
