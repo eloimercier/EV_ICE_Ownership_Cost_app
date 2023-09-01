@@ -15,10 +15,9 @@ server <- function(input, output, session) {
 ########################### SETUP ############################
 ##############################################################
 
-    countryUnitData <- reactiveValues(region_name="Province/Territory", currency_name="CAD", 
-        symbols  = list(thousand="$",    unit="$",   cent="¢",     gas_efficiency="L/100kms", gas_rate="¢/L",   electricity_efficiency="kWh/100kms", electricity_rate="¢/kW",  percent="%",     distance="kms"), 
-        position = list(thousand="left", unit="left",cent="right", gas_efficiency="right",    gas_rate="right", electricity_efficiency="right",      electricity_rate="right", percent="right", distance="right"), 
-        format   = list(big.mark=",", small.mark=".", nsmall=2))
+    countrySpecificData <- reactiveValues(names_for_regions="Province/Territory", currency_name="CAD", currency_symbol="$", currency_symbol_cent="¢", distance="kms",
+        gas_efficiency="L/100kms", gas_rate="¢/L",   electricity_efficiency="kWh/100kms", electricity_rate="¢/kW"
+        )
 
     car_ini <- list(name="", MSRP=NA, rebates=NA, purchase_price=NA, engine=NA, efficiency=NA, fuel_rate=NA, fuel_increase=NA, maintenance=NA, yearly_kms=NA)
 
@@ -155,22 +154,54 @@ output$car_table <- renderDataTable({
 	car_list$vehicle_federal_rebate <- ifelse(car_list[,"MSRP"]<=dataVariable$federal_max_msrp & car_list$Engine=="BEV", dataVariable$federal_rebate ,0)
 	car_list$vehicle_region_rebate <- ifelse(car_list[,"MSRP"]<=dataVariable$region_max_msrp & car_list$Engine=="BEV", dataVariable$region_rebate ,0)
 	car_list$after_rebates <- car_list$after_tax_fees - car_list$vehicle_federal_rebate - car_list$vehicle_region_rebate
-	car_list <- car_list[order(car_list$after_tax_fees,decreasing = FALSE),]
 
     #format units
-    car_list[,"MSRP"] <- format_currency(values=car_list[,"MSRP"], unit_data=countryUnitData, unit_target="unit")
-    car_list$after_tax_fees <- format_currency(values=car_list[,"after_tax_fees"], unit_data=countryUnitData, unit_target="unit")
-     car_list$vehicle_federal_rebate <- format_currency(values=car_list[,"vehicle_federal_rebate"], unit_data=countryUnitData, unit_target="unit")
-    car_list$vehicle_region_rebate <- format_currency(values=car_list[,"vehicle_region_rebate"], unit_data=countryUnitData, unit_target="unit")
-    car_list$after_rebates <- format_currency(values=car_list[,"after_rebates"], unit_data=countryUnitData, unit_target="unit")
-
+    # car_list$after_tax_fees <- format_currency(values=car_list[,"after_tax_fees"], unit_data=countryUnitData, unit_target="unit")
+    # car_list$vehicle_federal_rebate <- format_currency(values=car_list[,"vehicle_federal_rebate"], unit_data=countryUnitData, unit_target="unit")
+    # car_list$vehicle_region_rebate <- format_currency(values=car_list[,"vehicle_region_rebate"], unit_data=countryUnitData, unit_target="unit")
 	
 	if(is.null(input$region) | identical(input$region,'')){
 	  car_list$after_tax_fees <- car_list$after_rebates<- "-"
 	}
-	colnames(car_list) <- c("Make", "Model", "Trim", "Engine", "MSRP", "Traction", "Range (km)", "AC Charging rate (kw)", "DC Fast Charging rate (kW)", "HP", "Delivery Fees", "Price after Tax&Feess", "Federal Rebate", paste0(dataVariable$region," rebate"), "Purchase Price")
-	datatable(car_list, selection = 'single', rownames=FALSE, extensions = 'Buttons', filter="top", 
-        options = list(pageLength = 20, lengthMenu = c(10, 20, 50, 100), dom = 'Bfrtlip', buttons = I('colvis'), columnDefs = list(list(targets = c(5,7,10,11,12,13), visible = FALSE))))
+
+    msrp_colname <- paste0("MSRP (", countrySpecificData$currency_name,")")
+    purchase_price_colname <- paste0("Purchase Price (", countrySpecificData$currency_name,")")
+    region_rebate_colname <- paste0(dataVariable$region," rebate")
+    range_colname <- paste0("Range (",countrySpecificData$distance,")")
+	colnames(car_list) <- c("Make", "Model", "Trim", "Engine", msrp_colname, "Traction", range_colname, "AC Charging rate (kw)", "DC Fast Charging rate (kW)", "HP", "Delivery Fees", "Price after Tax & Fees", "Federal Rebate", paste0(dataVariable$region," rebate"), purchase_price_colname)
+    car_list <- car_list[,c("Make", "Model", "Trim", "Engine", msrp_colname,  "Delivery Fees", "Price after Tax & Fees", "Federal Rebate", region_rebate_colname, purchase_price_colname, "Traction", range_colname, "AC Charging rate (kw)", "DC Fast Charging rate (kW)", "HP")] #reorder columns
+    car_list <- car_list[order(car_list[,purchase_price_colname],decreasing = FALSE),]
+    hide_columns <- which(colnames(car_list) %in% c("Delivery Fees", "Price after Tax & Fees", "Federal Rebate", region_rebate_colname, "Traction", "AC Charging rate (kw)")) - 1 #columns hidden by default, 0-based
+
+    #create column mouseover info
+    mouseover_info = htmltools::withTags(table(
+      class = 'display',
+      thead(
+        tr(
+            th('Make', title = 'Make'),
+            th('Model', title = 'Model'),
+            th('Trim', title = 'Trim'),
+            th('Engine', title = 'Type of engine'),
+            th(msrp_colname, title = "Manufacturer's Suggested Retail Price"),
+            th('Delivery Fees', title = 'Addtional delivery fees - manufacturer specific'),
+            th('Price after Tax & Fees', title = 'Price accounting for delivery fees and tax'),
+            th('Federal Rebate', title = 'Federal rebate if applicable'),
+            th(region_rebate_colname, title = 'Regional rebate if applicable'),
+            th(purchase_price_colname, title = 'Final price after rebates'),
+            th('Traction', title = 'Car drivetrain'),
+            th(range_colname, title = 'Distance on a full charge'),
+            th('AC Charging rate (kw)', title = 'AC Charging rate (kw)'),
+            th('DC Fast Charging rate (kW)', title = 'DC Fast Charging rate (kW)'),
+            th('HP', title = 'Horsepower')
+        )
+      )
+    ))
+
+	datatable(car_list, selection = 'single', rownames=FALSE, extensions = 'Buttons', filter="top", container = mouseover_info,
+        options = list(pageLength = 20, lengthMenu = c(10, 20, 50, 100), dom = 'Bfrtlip', buttons = I('colvis'), columnDefs = list(list(targets = hide_columns, visible = FALSE)))) %>% 
+            formatStyle(msrp_colname, background = styleColorBar(car_list[,msrp_colname], rgb(0,0.8,0,0.3)),  backgroundSize = '98% 88%',   backgroundRepeat = 'no-repeat',  backgroundPosition = 'left')  %>% 
+            formatStyle(purchase_price_colname, background = styleColorBar(car_list[,purchase_price_colname], rgb(0,0.8,0,0.3)),  backgroundSize = '98% 88%',   backgroundRepeat = 'no-repeat',  backgroundPosition = 'left')
+
 	
 })
 
@@ -373,17 +404,16 @@ observeEvent(c(input$region, input$yearly_kms, input$make5, input$model5, input$
 output$model_variable_info <- renderUI({
   HTML(paste0('<b>','Click on the tab to view and change default values. Double click on a cell to edit.','</b>'))
 })
-    #countryUnitData <- reactiveValues(name="CAD", symbols =  c(thousand="$",    unit="$",   cent="¢",     gas=" L/100kms", electricity=" kWh/100kms", percent="%",     distance="kms"), 
 
 observe({
     if(!is.null(input$yearly_kms)){
         #create a data.frame
-        c0 <-c( paste0("Purchase Price (",countryUnitData$symbols$unit,")"), 
-            paste0(countryUnitData$symbols$distance," driven (yearly)"), 
-            paste0("Efficency (",countryUnitData$symbols$gas_efficiency," or ", countryUnitData$symbols$electricity_efficiency,")"), 
-            paste0("Fuel rate (",countryUnitData$symbols$gas_rate," or ", countryUnitData$symbols$electricity_rate,")"), 
-            paste0("Fuel price increase (",countryUnitData$symbols$cent,")"), 
-            paste0("Yearly Maintenance (",countryUnitData$symbols$unit,")"))
+        c0 <-c( paste0("Purchase Price (",countrySpecificData$currency_name,")"), 
+            paste0(countrySpecificData$distance," driven (yearly)"), 
+            paste0("Efficency (",countrySpecificData$gas_efficiency," or ", countrySpecificData$electricity_efficiency,")"), 
+            paste0("Fuel/energy rate (",countrySpecificData$gas_rate," or ", countrySpecificData$electricity_rate,")"), 
+            paste0("Yearly fuel/energy price increase (",countrySpecificData$currency_symbol_cent,")"), 
+            paste0("Yearly Maintenance (",countrySpecificData$currency_name,")"))
         c1 <- data.frame(c(carSelection$car1$purchase_price, carSelection$car1$yearly_kms, carSelection$car1$efficiency, carSelection$car1$fuel_rate, carSelection$car1$fuel_increase, carSelection$car1$maintenance))
         c2 <- data.frame(c(carSelection$car2$purchase_price, carSelection$car2$yearly_kms, carSelection$car2$efficiency, carSelection$car2$fuel_rate, carSelection$car2$fuel_increase, carSelection$car2$maintenance))
         c3 <- data.frame(c(carSelection$car3$purchase_price, carSelection$car3$yearly_kms, carSelection$car3$efficiency, carSelection$car3$fuel_rate, carSelection$car3$fuel_increase, carSelection$car3$maintenance))
@@ -466,8 +496,9 @@ observe({
 output$CarComparisonTable <- renderDataTable({
     car_comparison_table <- comparisonData$cost_over_years  
     for (i in 2:6){
-        car_comparison_table[,i] <- format_currency(values=car_comparison_table[,i], unit_data=countryUnitData, unit_target="unit")
+        car_comparison_table[,i] <- as.numeric(car_comparison_table[,i])
     }
+DF1 <<- car_comparison_table    
   df <- datatable(car_comparison_table, rownames=FALSE, 
         selection = list(mode = 'single'),
         options = list(ordering=FALSE, autoWidth = F, pageLength = 20, dom = 't',
@@ -478,26 +509,38 @@ output$CarComparisonTable <- renderDataTable({
         )                
     ) 
   df <- df %>% formatStyle("Year",target = 'row', backgroundColor = styleEqual(input$keep_years, '#fdf573', default="white"), fontWeight=styleEqual(input$keep_years, "bold"))
-  df
+  df # %>% formatStyle(names(car_comparison_table)[2:6], background = styleColorBar(c(0, max(car_comparison_table[,2:6], na.rm=TRUE)), rgb(0,0.8,0,0.2)),  backgroundSize = '98% 88%',   backgroundRepeat = 'no-repeat',  backgroundPosition = 'left')
+
 })
 
 
 output$CarFinalCostTable <- renderDataTable({
     car_final_cost_table <- comparisonData$final_cost[c("Ownership Cost", "Remaining Value","Final Cost"),]
-      for (i in 2:6){
-        car_final_cost_table[,i] <- format_currency(values=car_final_cost_table[,i], unit_data=countryUnitData, unit_target="unit")
-    }
   colnames(car_final_cost_table)[1] <- "Cost after resale"
-  df <- datatable(car_final_cost_table, rownames=FALSE, 
-        selection = list(mode = 'single'),
+
+  mouseover_info_js <- "var tips = ['Ownership Cost', 'Remaining Value', 'Final Cost'],
+                        firstColumn = $('#tbl tr td:first-child');
+                        for (var i = 0; i < tips.length; i++) {
+                        $(firstColumn[i]).attr('title', tips[i]);
+                        }"
+
+car_final_cost_table$Tips <- c( paste0("Total expense over ", input$keep_years," years of ownership"), paste0("Resale value after ", input$keep_years, " years"), paste0("How much was actually spent owning the car for ", input$keep_years, " years"))
+DF2 <<- car_final_cost_table
+  df <- datatable(car_final_cost_table, rownames=FALSE, selection = list(mode = 'single'),
         options = list(ordering=FALSE, autoWidth = F, pageLength = 20, dom = 't',
+            rowCallback = JS(
+                      "function(row, data) {",
+                      "var full_text = data[6];",
+                      "$('td:eq(0)', row).attr('title', full_text);",
+                                            "}"),
             columnDefs = list(list(className = 'dt-head-center', targets = '_all'), #centered colnames
                               list(className = 'text-center', width="150px", targets = c(0)), #defined first column
-                              list(className = 'text-center', width="200px", targets = c(1,2,3,4,5)) #defined remaining columns
+                              list(className = 'text-center', width="200px", targets = c(1,2,3,4,5)), #defined remaining columns
+                              list(targets = 6, visible = FALSE) #hide tips
             ) 
         )                
     )
-    df <- df %>% formatStyle("Cost after resale", target = 'row', backgroundColor = styleEqual("Final Cost", '#fff300',  default="white"), fontWeight=styleEqual("Final Cost", "bold"))
+    df <- df %>% formatStyle("Tips", target = 'row', backgroundColor = styleEqual(car_final_cost_table$Tips[3], '#fff300',  default="white"), fontWeight=styleEqual(car_final_cost_table$Tips[3], "bold"))
     df
  
 })
@@ -548,8 +591,7 @@ output$CarComparisonPlot <- renderPlotly({
 output$rebate_table <- renderDT({
   rebate_table <- dataTables$rebates
   rebate_table <- rebate_table[-grep("Source", rebate_table$Region),,drop=FALSE]
-  colnames(rebate_table) <- c("Region", "Maximum Amount", "If MSRP below...", "Condition")
-  rebate_table[,"Maximum Amount"] <- format_currency(values=rebate_table[,"Maximum Amount"], unit_data=countryUnitData, unit_target="unit")
+  colnames(rebate_table) <- c(countrySpecificData$names_for_regions, paste0("Maximum Amount (",countrySpecificData$currency_name,")"), "If MSRP below...", "Condition")
   rebate_table
 }, selection = 'single', rownames=FALSE, options = list(pageLength = 20, autoWidth = F))
 
@@ -564,6 +606,8 @@ output$rebate_source <- renderUI({
     tax_table <- dataTables$taxes
     tax_table <- tax_table[-grep("Source", rownames(tax_table)),,drop=FALSE]
     tax_table$Region <- rownames(tax_table)
+    tax_table$Rate <- paste0(as.numeric(tax_table$Rate) * 100, "%")
+    colnames(tax_table) <- c("Rate", countrySpecificData$names_for_regions)
     tax_table[,2:1]
   }, selection = 'single', rownames=FALSE, options = list(pageLength = 20, autoWidth = F))
   
@@ -578,7 +622,7 @@ output$rebate_source <- renderUI({
     gas_table <- dataTables$gas
     gas_table <- gas_table[-grep("Source", rownames(gas_table)),,drop=FALSE]
     gas_table$Region <- rownames(gas_table)
-    colnames(gas_table) <- c(countryUnitData$symbols$gas_rate, countryUnitData$region_name)
+    colnames(gas_table) <- c(paste0(countrySpecificData$gas_rate," (",countrySpecificData$currency_name,")"), countrySpecificData$names_for_regions)
     gas_table[,2:1]
   }, selection = 'single', rownames=FALSE, options = list(pageLength = 20, autoWidth = F))
   
@@ -593,7 +637,7 @@ output$rebate_source <- renderUI({
     electricity_table <- dataTables$electricity
     electricity_table <- electricity_table[-grep("Source", rownames(electricity_table)),,drop=FALSE]
     electricity_table$Region <- rownames(electricity_table)
-    colnames(electricity_table) <- c(countryUnitData$symbols$electricity_rate, countryUnitData$region_name)
+    colnames(electricity_table) <- c(paste0(countrySpecificData$electricity_rate, " (",countrySpecificData$currency_name,")"), countrySpecificData$names_for_regions)
     electricity_table[,2:1]
   }, selection = 'single', rownames=FALSE, options = list(pageLength = 20, autoWidth = F))
   
@@ -607,23 +651,24 @@ output$rebate_source <- renderUI({
   output$delivery_fees_table <- renderDT({
     delivery_fees_table <- dataTables$delivery_fees
     delivery_fees_table$Region <- rownames(delivery_fees_table)
-    delivery_fees_table[,"Amount"] <- format_currency(values=delivery_fees_table[,"Amount"], unit_data=countryUnitData, unit_target="unit")
+    colnames(delivery_fees_table) <- c(paste0("Amount (",countrySpecificData$currency_name,")"),countrySpecificData$names_for_regions)
     delivery_fees_table[,2:1]
   }, selection = 'single', rownames=FALSE, options = list(pageLength = 20, autoWidth = F))
   
   #### DEFAULT MODEL VARIABLES #### 
   output$default_model_variable_table <- renderDT({
       default_variables <- c(
-            "ICE efficiency"=format_currency(values=dataVariable$ice_efficiency, unit_data=countryUnitData, unit_target="gas_efficiency"),
-            "ICE maintenance (yearly)"=format_currency(values=dataVariable$ice_maintenance, unit_data=countryUnitData, unit_target="unit"),
-            "BEV efficiency"=format_currency(values=dataVariable$bev_efficiency, unit_data=countryUnitData, unit_target="electricity_efficiency"),
-            "BEV maintenance (yearly)"=format_currency(values=dataVariable$bev_maintenance, unit_data=countryUnitData, unit_target="unit"),
-            "Depreciation rate (yearly)"=format_currency(values=dataVariable$depreciation_rate, unit_data=countryUnitData, unit_target="percent"),
-            "Gas price increase (yearly)"=format_currency(values=dataVariable$gas_increase, unit_data=countryUnitData, unit_target="cent"),
-            "Electricity price increase (yearly)"=format_currency(values=dataVariable$electricity_increase, unit_data=countryUnitData, unit_target="cent"))
+            "ICE efficiency"=paste(dataVariable$ice_efficiency, countrySpecificData$gas_efficiency),
+            "ICE maintenance (yearly)"=paste0(countrySpecificData$currency_symbol, dataVariable$ice_maintenance), 
+            "BEV efficiency"=paste(dataVariable$bev_efficiency, countrySpecificData$electricity_efficiency),
+            "BEV maintenance (yearly)"=paste0(countrySpecificData$currency_symbol, dataVariable$bev_maintenance), 
+            "Depreciation rate (yearly)"=paste0(dataVariable$depreciation_rate*100, "%"), 
+            "Gas price increase (yearly)"=paste0(dataVariable$gas_increase, countrySpecificData$currency_symbol_cent),
+            "Electricity price increase (yearly)"=paste0(dataVariable$electricity_increase, countrySpecificData$currency_symbol_cent)) 
+            #Depreciation at 10 years: 25%
       model_variable_table <- data.frame(Parameters=names(default_variables),
                                          Values=default_variables)
       model_variable_table
   }, selection = 'single', rownames=FALSE, options = list(pageLength = 20, autoWidth = F))
-  
+#REMOVE SEARCH BAR IN TABLES  
 }
