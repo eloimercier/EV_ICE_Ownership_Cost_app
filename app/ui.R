@@ -77,20 +77,38 @@ tabItem(tabName = "compare",
         #Model variables
         column(12, 
             div(style = "height:20px"),
-            uiOutput("model_variable_info"),
+            
+            HTML("<b>Parameters used to estimate cost of ownership</b>"),
             bsCollapse(id = "model_variable_table_collapsible", open = NULL,
-                bsCollapsePanel("Model Variables", dataTableOutput("CarSelectedVariableTable"), style="info")
+
+                bsCollapsePanel("Model Variables  <click here to edit>", 
+                    uiOutput("model_variable_info"),
+                    dataTableOutput("CarSelectedVariableTable"), 
+                    style="info")
             ),            
             div(style = "height:20px")
         ),
-        
+
         #Comparison table and plot
         column(12,
+            HTML('<b>Cost of ownership based on model variables</b>'),
+
             tabsetPanel(
                 tabPanel("Table", 
+
                     fluidRow(
+
+                        #pruchase price
+                        dataTableOutput("purchasePriceTable"),
+                        #cost of ownsership over the years
                         dataTableOutput("CarComparisonTable"),
-                        div(style = "height:20px"),
+                        #final cost of ownership
+                        dataTableOutput("CostOfOwnershipTable"),
+
+                        #Final cost after resale
+                        div(style = "height:30px"),
+                        column(12, uiOutput("car_resell_info")),
+                        dataTableOutput("BreakdownCostTable"),
                         dataTableOutput("CarFinalCostTable")
                     )
                 ),
@@ -98,9 +116,9 @@ tabItem(tabName = "compare",
                     plotlyOutput("CarComparisonPlot")
                 )      
             )
-)
-
         )
+
+    )
 
       
 

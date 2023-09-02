@@ -402,12 +402,12 @@ observeEvent(c(input$region, input$yearly_kms, input$make5, input$model5, input$
 #### DISPLAY VARIABLE TABLE #### 
 
 output$model_variable_info <- renderUI({
-  HTML(paste0('<b>','Click on the tab to view and change default values. Double click on a cell to edit.','</b>'))
+  HTML(paste0("<b>The default variables are taken from the Parameter tables based on your ", countrySpecificData$names_for_regions," and the type of vehicle. Double click on a cell to edit.</b>"))
 })
 
 observe({
     if(!is.null(input$yearly_kms)){
-        #create a data.frame
+        #prepares the model variable table
         c0 <-c( paste0("Purchase Price (",countrySpecificData$currency_name,")"), 
             paste0(countrySpecificData$distance," driven (yearly)"), 
             paste0("Efficency (",countrySpecificData$gas_efficiency," or ", countrySpecificData$electricity_efficiency,")"), 
@@ -429,19 +429,26 @@ observe({
 
 output$CarSelectedVariableTable <- renderDataTable({
     car_selected_table <- modelVariableTable$df
-    # not_editable_cols <- NULL
-    not_editable_cols <- which(sapply(c(input$trim1,input$trim2, input$trim3, input$trim4, input$trim5), function(x){identical(x,"")}, USE.NAMES=F))
-    datatable(car_selected_table, colnames = rep("", ncol(car_selected_table)), rownames=FALSE, 
+    not_editable_cols <- which(sapply(c(input$trim1,input$trim2, input$trim3, input$trim4, input$trim5), function(x){identical(x,"")}, USE.NAMES=F)) #columns without a selection should not be editable
+    car_selected_table$Tips <- c("Purchase price after accounting for MSRP, delivery fees, taxes and rebates", "The distance you drive in a year", "The car efficiency i.e. how much electricity or gas it uses", "Cost of electricty or gas in your area", "An estimation ofthe yearly electricity or gas increases", "Estimated yearly maintenance cost")
+    datatable(car_selected_table, colnames = rep("", ncol(car_selected_table)), rownames=FALSE,
             selection = list(mode = 'single', target = 'column', selectable = c(-1)),
             editable = list(target = "cell", disable = list(columns = c(0, not_editable_cols))),
             options = list( dom = 't', ordering=FALSE, autoWidth = F,
-                columnDefs = list(list(className = 'text-center', width="150px", targets = c(0)),
-                                list(className = 'text-center', width="200px", targets = c(1,2,3,4,5))
-                    ) 
+                columnDefs = list(
+                                list(className = 'text-center', width="150px", targets = c(0)),
+                                list(className = 'text-center', width="200px", targets = c(1,2,3,4,5)),
+                                list(targets = 6, visible = FALSE)),
+                rowCallback = JS(
+                      "function(row, data) {",
+                      "var full_text = data[6];",
+                      "$('td:eq(0)', row).attr('title', full_text);",
+                                            "}")
             )                
     )    
 },server = TRUE)
 
+#handles the update of the model variable table based on user input
 observeEvent(input$CarSelectedVariableTable_cell_edit, {
     i <- input$CarSelectedVariableTable_cell_edit$row
     j <- input$CarSelectedVariableTable_cell_edit$col+1
@@ -481,52 +488,122 @@ observe({
         operational_cost <- final_ownership_cost - purchase_price #how much did it cost to use the car
         final_cost <- round(final_ownership_cost - resale_value,2)
         df2 <- data.frame(matrix(c(
+            "Purchase Price", purchase_price,
             "Ownership Cost", final_ownership_cost, 
             "Remaining Value", resale_value, 
             "Depreciation Cost", depreciation_cost,
             "Operational Cost", operational_cost,
-            "Final Cost", final_cost), nrow=5, byrow=T))
-        rownames(df2) <- c("Ownership Cost", "Remaining Value","Depreciation Cost","Operational Cost","Final Cost")
-        colnames(df2) <- c("What", carSelection$car1$name, carSelection$car2$name, carSelection$car3$name, carSelection$car4$name, carSelection$car5$name)
+            "Final Cost", final_cost), nrow=6, byrow=T))
+        rownames(df2) <- c("Purchase Price", "Ownership Cost", "Remaining Value","Depreciation Cost","Operational Cost","Final Cost")
+        colnames(df2) <- c("Breakdown", carSelection$car1$name, carSelection$car2$name, carSelection$car3$name, carSelection$car4$name, carSelection$car5$name)
         comparisonData$final_cost <- df2
     }
 })
 
 
+
+
+
+output$car_comparison_info <- renderUI({
+  HTML(paste0('<b>','Cost of ownership over the years based on model variables.','</b>'))
+})
+
+#inital cost of the car
+output$purchasePriceTable <- renderDataTable({
+    purchase_price_table <- modelVariableTable$df["purchase_price",,drop=FALSE]
+
+    purchase_price_table$Tips <- "Purchase price after accounting for MSRP, delivery fees, taxes and rebates"
+    colnames(purchase_price_table) <- LETTERS[1:ncol(purchase_price_table)] #placeholder for rowCallback which doesn't accept empty colnames
+
+    df <- datatable(purchase_price_table, rownames=FALSE, colnames = rep("", ncol(purchase_price_table)),
+        selection = list(mode = 'single'),
+        options = list(ordering=FALSE, autoWidth = F, pageLength = 20, dom = 't',
+                columnDefs = list(
+                                list(className = 'text-center', width="150px", targets = c(0)),
+                                list(className = 'text-center', width="200px", targets = c(1,2,3,4,5)),
+                                list(targets = 6, visible = FALSE)),
+                rowCallback = JS(
+                      "function(row, data) {",
+                      "var full_text = data[6];",
+                      "$('td:eq(0)', row).attr('title', full_text);",
+                                            "}")
+            ) 
+        ) 
+
+    #create breaks for coloring cells
+    if(!all(is.na(purchase_price_table[,2:6]))){
+        xr <- as.numeric(purchase_price_table[,2:6])
+        brks <- seq(from=min(xr, na.rm=T), to=max(xr, na.rm=T), length.out=19) 
+        clrs <- colorRampPalette(c("green","red"))(20)
+        #color cells based on values
+        df %>% formatStyle(names(purchase_price_table)[2:6],  backgroundColor = styleInterval(brks, clrs),  default="white") 
+    } else {
+        df
+    }
+})
+
+#Compare cost of car ownership over X year
 output$CarComparisonTable <- renderDataTable({
     car_comparison_table <- comparisonData$cost_over_years  
-    for (i in 2:6){
-        car_comparison_table[,i] <- as.numeric(car_comparison_table[,i])
-    }
-DF1 <<- car_comparison_table    
-  df <- datatable(car_comparison_table, rownames=FALSE, 
+    datatable(car_comparison_table, rownames=FALSE, 
         selection = list(mode = 'single'),
         options = list(ordering=FALSE, autoWidth = F, pageLength = 20, dom = 't',
             columnDefs = list(list(className = 'dt-head-center', targets = '_all'), #centered colnames
                               list(className = 'text-center', width="150px", targets = c(0)), #defined first column
                               list(className = 'text-center', width="200px", targets = c(1,2,3,4,5)) #defined remaining columns
-            ) 
+            )
         )                
     ) 
-  df <- df %>% formatStyle("Year",target = 'row', backgroundColor = styleEqual(input$keep_years, '#fdf573', default="white"), fontWeight=styleEqual(input$keep_years, "bold"))
-  df # %>% formatStyle(names(car_comparison_table)[2:6], background = styleColorBar(c(0, max(car_comparison_table[,2:6], na.rm=TRUE)), rgb(0,0.8,0,0.2)),  backgroundSize = '98% 88%',   backgroundRepeat = 'no-repeat',  backgroundPosition = 'left')
+})
+
+#Cost of ownership at the end of X years
+output$CostOfOwnershipTable <- renderDataTable({
+    cost_ownership_table <- tail(comparisonData$cost_over_years,1)
+    cost_ownership_table[1,1] <- "Cost of ownership" #change the label
+    cost_ownership_table$Tips <- c(paste0("Total cost of ownership after ", input$keep_years,". Accounts for purchase price, electricity/gas cost and maintenance."))
+    colnames(cost_ownership_table) <- LETTERS[1:ncol(cost_ownership_table)] #placeholder for rowCallback which doesn't accept empty colnames
+
+    df <- datatable(cost_ownership_table, rownames=FALSE, colnames = rep("", ncol(cost_ownership_table)),
+        selection = list(mode = 'single'),
+        options = list(ordering=FALSE, autoWidth = F, pageLength = 20, dom = 't',
+                columnDefs = list(
+                                list(className = 'text-center', width="150px", targets = c(0)),
+                                list(className = 'text-center', width="200px", targets = c(1,2,3,4,5)),
+                                list(targets = 6, visible = FALSE)),
+                rowCallback = JS(
+                      "function(row, data) {",
+                      "var full_text = data[6];",
+                      "$('td:eq(0)', row).attr('title', full_text);",
+                                            "}")
+            ) 
+        ) 
+
+    #create breaks for coloring cells
+    if(!all(is.na(cost_ownership_table[,2:6]))){
+        xr <- as.numeric(cost_ownership_table[,2:6])
+        brks <- seq(from=min(xr, na.rm=T), to=max(xr, na.rm=T), length.out=19) 
+        clrs <- colorRampPalette(c("green","red"))(20)
+        #color cells based on values
+        df %>% formatStyle(names(cost_ownership_table)[2:6],  backgroundColor = styleInterval(brks, clrs),  default="white") 
+    } else {
+        df
+    }
 
 })
 
 
-output$CarFinalCostTable <- renderDataTable({
-    car_final_cost_table <- comparisonData$final_cost[c("Ownership Cost", "Remaining Value","Final Cost"),]
-  colnames(car_final_cost_table)[1] <- "Cost after resale"
 
-  mouseover_info_js <- "var tips = ['Ownership Cost', 'Remaining Value', 'Final Cost'],
-                        firstColumn = $('#tbl tr td:first-child');
-                        for (var i = 0; i < tips.length; i++) {
-                        $(firstColumn[i]).attr('title', tips[i]);
-                        }"
 
-car_final_cost_table$Tips <- c( paste0("Total expense over ", input$keep_years," years of ownership"), paste0("Resale value after ", input$keep_years, " years"), paste0("How much was actually spent owning the car for ", input$keep_years, " years"))
-DF2 <<- car_final_cost_table
-  df <- datatable(car_final_cost_table, rownames=FALSE, selection = list(mode = 'single'),
+output$car_resell_info <- renderUI({
+  HTML(paste0('<b>','Cost after accounting for resale value','</b>'))
+})
+
+#Final cost after resell and breakdown
+output$BreakdownCostTable <- renderDataTable({
+    breakdown_cost_table <- comparisonData$final_cost[c("Purchase Price", "Operational Cost", "Remaining Value"),]
+
+    breakdown_cost_table$Tips <- c( "Purchase price after accounting for MSRP, delivery fees, taxes and rebates", paste0("Total expenses over ", input$keep_years," years of ownership"), paste0("Resell value. Account for purchase price and depreciation."))
+    df <- datatable(breakdown_cost_table, rownames=FALSE, selection = list(mode = 'single'),
         options = list(ordering=FALSE, autoWidth = F, pageLength = 20, dom = 't',
             rowCallback = JS(
                       "function(row, data) {",
@@ -540,11 +617,52 @@ DF2 <<- car_final_cost_table
             ) 
         )                
     )
-    df <- df %>% formatStyle("Tips", target = 'row', backgroundColor = styleEqual(car_final_cost_table$Tips[3], '#fff300',  default="white"), fontWeight=styleEqual(car_final_cost_table$Tips[3], "bold"))
     df
  
 })
 
+
+
+
+
+output$CarFinalCostTable <- renderDataTable({
+    final_cost_table <- comparisonData$final_cost["Final Cost",1:6,drop=FALSE] 
+    colnames(bla) <- LETTERS[1:ncol(bla)] #placeholder
+
+    final_cost_table[1,1] <- "Cost after resell" #change the label
+    final_cost_table$Tips <- c(paste0("Total cost of the car after accounting for resale value"))
+    colnames(final_cost_table) <- LETTERS[1:ncol(final_cost_table)] #placeholder for rowCallback which doesn't accept empty colnames
+
+    df <- datatable(final_cost_table, rownames=FALSE, colnames = rep("", ncol(final_cost_table)),
+        selection = list(mode = 'single'),
+        options = list(ordering=FALSE, autoWidth = F, pageLength = 20, dom = 't',
+                columnDefs = list(
+                                list(className = 'text-center', width="150px", targets = c(0)),
+                                list(className = 'text-center', width="200px", targets = c(1,2,3,4,5)),
+                                list(targets = 6, visible = FALSE)),
+                rowCallback = JS(
+                      "function(row, data) {",
+                      "var full_text = data[6];",
+                      "$('td:eq(0)', row).attr('title', full_text);",
+                                            "}")
+            ) 
+        ) 
+
+    #create breaks for coloring cells
+    if(!all(is.na(final_cost_table[,2:6]))){
+        xr <- as.numeric(final_cost_table[,2:6])
+        brks <- seq(from=min(xr, na.rm=T), to=max(xr, na.rm=T), length.out=19) 
+        clrs <- colorRampPalette(c("green","red"))(20)
+        #color cells based on values
+        df %>% formatStyle(names(final_cost_table)[2:6],  backgroundColor = styleInterval(brks, clrs),  default="white") 
+    } else {
+        df
+    }
+
+ })
+
+#END TESTING
+####################################################################################
 
 #### CAR COMPARISON PLOT #### 
 
@@ -563,10 +681,10 @@ car_comparison_plot_data <- reactive({
 car_final_cost_plot_data <- reactive({
     df <- comparisonData$final_cost[c("Depreciation Cost",  "Operational Cost"),]
     colnames(df) <- make.unique(colnames(df))
-    df_long <- melt(as.matrix(df[,-which(colnames(df)=="What")]), na.rm=T , varnames="What")
-    colnames(df_long) <- c("What", "Model", "Cost")
+    df_long <- melt(as.matrix(Breakdown[,-which(colnames(df)=="Breakdown")]), na.rm=T , varnames="Breakdown")
+    colnames(df_long) <- c("Breakdown", "Model", "Cost")
     df_long$Cost <- as.numeric(df_long$Cost)
-    p <- ggplot(df_long, aes(x=Model, y=Cost, fill=What)) + geom_bar(stat = "identity")
+    p <- ggplot(df_long, aes(x=Model, y=Cost, fill=Breakdown)) + geom_bar(stat = "identity")
 
     p <- p + theme_minimal() + ylab("Cost") + xlab(NULL)
     p <- p + theme(panel.grid.major.y = element_line(size = 2), panel.grid.major.x=element_blank(), panel.grid.minor.x=element_blank(),
