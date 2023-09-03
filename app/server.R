@@ -19,11 +19,11 @@ server <- function(input, output, session) {
         gas_efficiency="L/100kms", gas_rate="¢/L",   electricity_efficiency="kWh/100kms", electricity_rate="¢/kW"
         )
 
-    car_ini <- list(name="", MSRP=NA, rebates=NA, purchase_price=NA, engine=NA, efficiency=NA, fuel_rate=NA, fuel_increase=NA, maintenance=NA, yearly_kms=NA)
+    car_ini <- list(name="", MSRP=NA, rebates=NA, purchase_price=NA, engine=NA, efficiency=NA, fuel_rate=NA, fuel_increase=NA, maintenance=NA, yearly_kms=NA, depreciation_x_years=NA)
 
 	dataTables <- reactiveValues(car_data=NA, rebates=NA, taxes=NA, gas=NA, electricity=NA, fees=NA)
 	dataVariable <- reactiveValues(region=NA, federal_rebate=NA, federal_max_msrp=NA, region_rebate=NA, region_max_msrp=NA, tax=NA, gas_rate=NA, electricity_rate=NA, #province specific
-                                  ice_efficiency=8, ice_maintenance=350, bev_efficiency=15, bev_maintenance=150, depreciation_rate=0.13, gas_increase=5, electricity_increase=1) #global
+                                  ice_efficiency=8, ice_maintenance=350, bev_efficiency=15, bev_maintenance=150, depreciation_rate=13, depreciation_value_10year=25, gas_increase=5, electricity_increase=1) #global
     carSelection <- reactiveValues(car1=car_ini, car2=car_ini, car3=car_ini, car4=car_ini, car5=car_ini)
     modelVariableTable <- reactiveValues(df=NA) #store variable needed for computation
     comparisonData <- reactiveValues(cost_over_years=NA, final_cost=NA)
@@ -149,17 +149,13 @@ output$car_table <- renderDataTable({
 
 	car_list$delivery_fees <- sapply(car_list$Make, function(x){dataTables$delivery_fees[x,1]})
 	car_list$delivery_fees[is.na(car_list$delivery_fees)] <- 0
-	car_list$after_tax_fees <- (car_list[,"MSRP"] + car_list$delivery_fees) * (dataVariable$tax) 
+	car_list$after_tax_fees <- round((car_list[,"MSRP"] + car_list$delivery_fees) * (dataVariable$tax) ,2)
 
 	car_list$vehicle_federal_rebate <- ifelse(car_list[,"MSRP"]<=dataVariable$federal_max_msrp & car_list$Engine=="BEV", dataVariable$federal_rebate ,0)
 	car_list$vehicle_region_rebate <- ifelse(car_list[,"MSRP"]<=dataVariable$region_max_msrp & car_list$Engine=="BEV", dataVariable$region_rebate ,0)
-	car_list$after_rebates <- car_list$after_tax_fees - car_list$vehicle_federal_rebate - car_list$vehicle_region_rebate
+	car_list$after_rebates <- round(car_list$after_tax_fees - car_list$vehicle_federal_rebate - car_list$vehicle_region_rebate,2)
 
-    #format units
-    # car_list$after_tax_fees <- format_currency(values=car_list[,"after_tax_fees"], unit_data=countryUnitData, unit_target="unit")
-    # car_list$vehicle_federal_rebate <- format_currency(values=car_list[,"vehicle_federal_rebate"], unit_data=countryUnitData, unit_target="unit")
-    # car_list$vehicle_region_rebate <- format_currency(values=car_list[,"vehicle_region_rebate"], unit_data=countryUnitData, unit_target="unit")
-	
+
 	if(is.null(input$region) | identical(input$region,'')){
 	  car_list$after_tax_fees <- car_list$after_rebates<- "-"
 	}
@@ -172,6 +168,10 @@ output$car_table <- renderDataTable({
     car_list <- car_list[,c("Make", "Model", "Trim", "Engine", msrp_colname,  "Delivery Fees", "Price after Tax & Fees", "Federal Rebate", region_rebate_colname, purchase_price_colname, "Traction", range_colname, "AC Charging rate (kw)", "DC Fast Charging rate (kW)", "HP")] #reorder columns
     car_list <- car_list[order(car_list[,purchase_price_colname],decreasing = FALSE),]
     hide_columns <- which(colnames(car_list) %in% c("Delivery Fees", "Price after Tax & Fees", "Federal Rebate", region_rebate_colname, "Traction", "AC Charging rate (kw)")) - 1 #columns hidden by default, 0-based
+
+    #create factors for better filtering
+    col_names_to_convert <- c("Make", "Engine", "Traction")
+    car_list[col_names_to_convert] <- lapply(car_list[col_names_to_convert] , factor)
 
     #create column mouseover info
     mouseover_info = htmltools::withTags(table(
@@ -313,7 +313,9 @@ observeEvent(c(input$region, input$yearly_kms, input$make1, input$model1, input$
         fuel_rate <- ifelse(engine=="BEV", dataVariable$electricity_rate, dataVariable$gas_rate)
         fuel_increase <- ifelse(engine=="BEV", dataVariable$electricity_increase, dataVariable$gas_increase) 
         maintenance <- ifelse(engine=="BEV", dataVariable$bev_maintenance, dataVariable$ice_maintenance)
-        carSelection$car1 <- list(name=car_long_name, MSRP=msrp, rebates=rebates, purchase_price=purchase_price, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, fuel_increase=fuel_increase, maintenance=maintenance, yearly_kms=input$yearly_kms)
+        depreciation_rate <- calculate_depreciation_rate (dataVariable$depreciation_value_10year, input$keep_years)
+        depreciation_x_years <- calculate_depreciation_n_years(depreciation_rate, input$keep_years)
+        carSelection$car1 <- list(name=car_long_name, MSRP=msrp, rebates=rebates, purchase_price=purchase_price, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, fuel_increase=fuel_increase, maintenance=maintenance, yearly_kms=input$yearly_kms, depreciation_x_years=depreciation_x_years)
     }
 })
 
@@ -333,7 +335,9 @@ observeEvent(c(input$region, input$yearly_kms, input$make2, input$model2, input$
         fuel_rate <- ifelse(engine=="BEV", dataVariable$electricity_rate, dataVariable$gas_rate)
         fuel_increase <- ifelse(engine=="BEV", dataVariable$electricity_increase, dataVariable$gas_increase) 
         maintenance <- ifelse(engine=="BEV", dataVariable$bev_maintenance, dataVariable$ice_maintenance)
-        carSelection$car2 <- list(name=car_long_name, MSRP=msrp, rebates=rebates, purchase_price=purchase_price, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, fuel_increase=fuel_increase, maintenance=maintenance, yearly_kms=input$yearly_kms)
+        depreciation_rate <- calculate_depreciation_rate (dataVariable$depreciation_value_10year, input$keep_years)
+        depreciation_x_years <- calculate_depreciation_n_years(depreciation_rate, input$keep_years)
+        carSelection$car2 <- list(name=car_long_name, MSRP=msrp, rebates=rebates, purchase_price=purchase_price, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, fuel_increase=fuel_increase, maintenance=maintenance, yearly_kms=input$yearly_kms, depreciation_x_years=depreciation_x_years)
     }
 })
 
@@ -353,7 +357,9 @@ observeEvent(c(input$region, input$yearly_kms, input$make3, input$model3, input$
         fuel_rate <- ifelse(engine=="BEV", dataVariable$electricity_rate, dataVariable$gas_rate)
         fuel_increase <- ifelse(engine=="BEV", dataVariable$electricity_increase, dataVariable$gas_increase) 
         maintenance <- ifelse(engine=="BEV", dataVariable$bev_maintenance, dataVariable$ice_maintenance)
-        carSelection$car3 <- list(name=car_long_name, MSRP=msrp, rebates=rebates, purchase_price=purchase_price, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, fuel_increase=fuel_increase, maintenance=maintenance, yearly_kms=input$yearly_kms)
+        depreciation_rate <- calculate_depreciation_rate (dataVariable$depreciation_value_10year, input$keep_years)
+        depreciation_x_years <- calculate_depreciation_n_years(depreciation_rate, input$keep_years)
+        carSelection$car3 <- list(name=car_long_name, MSRP=msrp, rebates=rebates, purchase_price=purchase_price, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, fuel_increase=fuel_increase, maintenance=maintenance, yearly_kms=input$yearly_kms, depreciation_x_years=depreciation_x_years)
     }
 })
 
@@ -373,7 +379,9 @@ observeEvent(c(input$region, input$yearly_kms, input$make4, input$model4, input$
         fuel_rate <- ifelse(engine=="BEV", dataVariable$electricity_rate, dataVariable$gas_rate)
         fuel_increase <- ifelse(engine=="BEV", dataVariable$electricity_increase, dataVariable$gas_increase) 
         maintenance <- ifelse(engine=="BEV", dataVariable$bev_maintenance, dataVariable$ice_maintenance)
-        carSelection$car4 <- list(name=car_long_name, MSRP=msrp, rebates=rebates, purchase_price=purchase_price, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, fuel_increase=fuel_increase, maintenance=maintenance, yearly_kms=input$yearly_kms)
+        depreciation_rate <- calculate_depreciation_rate (dataVariable$depreciation_value_10year, input$keep_years)
+        depreciation_x_years <- calculate_depreciation_n_years(depreciation_rate, input$keep_years)
+        carSelection$car4 <- list(name=car_long_name, MSRP=msrp, rebates=rebates, purchase_price=purchase_price, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, fuel_increase=fuel_increase, maintenance=maintenance, yearly_kms=input$yearly_kms, depreciation_x_years=depreciation_x_years)
     }
 })
 
@@ -393,7 +401,9 @@ observeEvent(c(input$region, input$yearly_kms, input$make5, input$model5, input$
         fuel_rate <- ifelse(engine=="BEV", dataVariable$electricity_rate, dataVariable$gas_rate)
         fuel_increase <- ifelse(engine=="BEV", dataVariable$electricity_increase, dataVariable$gas_increase) 
         maintenance <- ifelse(engine=="BEV", dataVariable$bev_maintenance, dataVariable$ice_maintenance)
-        carSelection$car5 <- list(name=car_long_name, MSRP=msrp, rebates=rebates, purchase_price=purchase_price, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, fuel_increase=fuel_increase, maintenance=maintenance, yearly_kms=input$yearly_kms)
+        depreciation_rate <- calculate_depreciation_rate (dataVariable$depreciation_value_10year, input$keep_years)
+        depreciation_x_years <- calculate_depreciation_n_years(depreciation_rate, input$keep_years)
+        carSelection$car5 <- list(name=car_long_name, MSRP=msrp, rebates=rebates, purchase_price=purchase_price, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, fuel_increase=fuel_increase, maintenance=maintenance, yearly_kms=input$yearly_kms, depreciation_x_years=depreciation_x_years)
     }
 })
 
@@ -413,15 +423,16 @@ observe({
             paste0("Efficency (",countrySpecificData$gas_efficiency," or ", countrySpecificData$electricity_efficiency,")"), 
             paste0("Fuel/energy rate (",countrySpecificData$gas_rate," or ", countrySpecificData$electricity_rate,")"), 
             paste0("Yearly fuel/energy price increase (",countrySpecificData$currency_symbol_cent,")"), 
-            paste0("Yearly Maintenance (",countrySpecificData$currency_name,")"))
-        c1 <- data.frame(c(carSelection$car1$purchase_price, carSelection$car1$yearly_kms, carSelection$car1$efficiency, carSelection$car1$fuel_rate, carSelection$car1$fuel_increase, carSelection$car1$maintenance))
-        c2 <- data.frame(c(carSelection$car2$purchase_price, carSelection$car2$yearly_kms, carSelection$car2$efficiency, carSelection$car2$fuel_rate, carSelection$car2$fuel_increase, carSelection$car2$maintenance))
-        c3 <- data.frame(c(carSelection$car3$purchase_price, carSelection$car3$yearly_kms, carSelection$car3$efficiency, carSelection$car3$fuel_rate, carSelection$car3$fuel_increase, carSelection$car3$maintenance))
-        c4 <- data.frame(c(carSelection$car4$purchase_price, carSelection$car4$yearly_kms, carSelection$car4$efficiency, carSelection$car4$fuel_rate, carSelection$car4$fuel_increase, carSelection$car4$maintenance))
-        c5 <- data.frame(c(carSelection$car5$purchase_price, carSelection$car5$yearly_kms, carSelection$car5$efficiency, carSelection$car5$fuel_rate, carSelection$car5$fuel_increase, carSelection$car5$maintenance))
+            paste0("Yearly Maintenance (",countrySpecificData$currency_name,")"),
+            paste0("Remaining value at ", input$keep_years, " years (in % of MSRP)"))
+        c1 <- data.frame(c(carSelection$car1$purchase_price, carSelection$car1$yearly_kms, carSelection$car1$efficiency, carSelection$car1$fuel_rate, carSelection$car1$fuel_increase, carSelection$car1$maintenance, carSelection$car1$depreciation_x_years))
+        c2 <- data.frame(c(carSelection$car2$purchase_price, carSelection$car2$yearly_kms, carSelection$car2$efficiency, carSelection$car2$fuel_rate, carSelection$car2$fuel_increase, carSelection$car2$maintenance, carSelection$car2$depreciation_x_years))
+        c3 <- data.frame(c(carSelection$car3$purchase_price, carSelection$car3$yearly_kms, carSelection$car3$efficiency, carSelection$car3$fuel_rate, carSelection$car3$fuel_increase, carSelection$car3$maintenance, carSelection$car3$depreciation_x_years))
+        c4 <- data.frame(c(carSelection$car4$purchase_price, carSelection$car4$yearly_kms, carSelection$car4$efficiency, carSelection$car4$fuel_rate, carSelection$car4$fuel_increase, carSelection$car4$maintenance, carSelection$car4$depreciation_x_years))
+        c5 <- data.frame(c(carSelection$car5$purchase_price, carSelection$car5$yearly_kms, carSelection$car5$efficiency, carSelection$car5$fuel_rate, carSelection$car5$fuel_increase, carSelection$car5$maintenance, carSelection$car5$depreciation_x_years))
         car_selected_table <- data.frame(cbind(c0,c1,c2,c3,c4,c5))
         colnames(car_selected_table) <- c("",carSelection$car1$name, carSelection$car2$name, carSelection$car3$name, carSelection$car4$name, carSelection$car5$name)
-        rownames(car_selected_table) <- c("purchase_price", "distance", "efficiency", "fuel_rate", "fuel_price_increase", "maintenance")
+        rownames(car_selected_table) <- c("purchase_price", "distance", "efficiency", "fuel_rate", "fuel_price_increase", "maintenance", "depreciation_x_years")
         modelVariableTable$df <- car_selected_table   
     }
 })
@@ -430,11 +441,11 @@ observe({
 output$CarSelectedVariableTable <- renderDataTable({
     car_selected_table <- modelVariableTable$df
     not_editable_cols <- which(sapply(c(input$trim1,input$trim2, input$trim3, input$trim4, input$trim5), function(x){identical(x,"")}, USE.NAMES=F)) #columns without a selection should not be editable
-    car_selected_table$Tips <- c("Purchase price after accounting for MSRP, delivery fees, taxes and rebates", "The distance you drive in a year", "The car efficiency i.e. how much electricity or gas it uses", "Cost of electricty or gas in your area", "An estimation ofthe yearly electricity or gas increases", "Estimated yearly maintenance cost")
+    car_selected_table$Tips <- c("Purchase price after accounting for MSRP, delivery fees, taxes and rebates", "The distance you drive in a year", "The car efficiency i.e. how much electricity or gas it uses", "Cost of electricty or gas in your area", "An estimation of the yearly electricity or gas increase", "Estimated yearly maintenance cost", "% of MSRP remaining at the end of the period")
     datatable(car_selected_table, colnames = rep("", ncol(car_selected_table)), rownames=FALSE,
             selection = list(mode = 'single', target = 'column', selectable = c(-1)),
             editable = list(target = "cell", disable = list(columns = c(0, not_editable_cols))),
-            options = list( dom = 't', ordering=FALSE, autoWidth = F,
+            options = list( dom = 't', ordering=FALSE, autoWidth = F, pageLength=20,
                 columnDefs = list(
                                 list(className = 'text-center', width="150px", targets = c(0)),
                                 list(className = 'text-center', width="200px", targets = c(1,2,3,4,5)),
@@ -465,25 +476,25 @@ observe({
         #Cost over X years
         df <- data.frame(matrix(ncol=6, nrow=input$keep_years))
         df[,1] <- seq_len(input$keep_years)
-        car_selected_table <- modelVariableTable$df
+        model_variables_table <- modelVariableTable$df
         for (i in 2:6){
             df[,i] <- compute_ownership_cost(
-                purchase_price=car_selected_table["purchase_price",i], 
+                purchase_price=model_variables_table["purchase_price",i], 
                 kms=input$yearly_kms, 
                 kept_years=seq_len(input$keep_years), 
-                fuel_per_100km=car_selected_table["efficiency",i], 
-                fuel_rate=car_selected_table["fuel_rate",i], 
-                fuel_increase=car_selected_table["fuel_price_increase",i], 
-                maintenance=car_selected_table["maintenance",i])
+                fuel_per_100km=model_variables_table["efficiency",i], 
+                fuel_rate=model_variables_table["fuel_rate",i], 
+                fuel_increase=model_variables_table["fuel_price_increase",i], 
+                maintenance=model_variables_table["maintenance",i])
         }
         colnames(df) <- c("Year",carSelection$car1$name, carSelection$car2$name, carSelection$car3$name, carSelection$car4$name, carSelection$car5$name)
         comparisonData$cost_over_years <- df
 
         #final cost after resale
-        purchase_price <- as.numeric(car_selected_table["purchase_price",-1])
+        purchase_price <- as.numeric(model_variables_table["purchase_price",-1])
         final_ownership_cost <- round(as.numeric(tail(df, 1)[-1]),2)
-        depreciation_x_years <- (1 - dataVariable$depreciation_rate) ^ input$keep_years
-        resale_value <- round(as.numeric(purchase_price * depreciation_x_years),2)
+        depreciation_x_years <- as.numeric(model_variables_table["depreciation_x_years",-1]) 
+        resale_value <- round(as.numeric(purchase_price * depreciation_x_years/100),2)
         depreciation_cost <-  purchase_price - resale_value #how much of the car value was lost
         operational_cost <- final_ownership_cost - purchase_price #how much did it cost to use the car
         final_cost <- round(final_ownership_cost - resale_value,2)
@@ -534,7 +545,7 @@ output$purchasePriceTable <- renderDataTable({
     if(!all(is.na(purchase_price_table[,2:6]))){
         xr <- as.numeric(purchase_price_table[,2:6])
         brks <- seq(from=min(xr, na.rm=T), to=max(xr, na.rm=T), length.out=19) 
-        clrs <- colorRampPalette(c("green","red"))(20)
+        clrs <- colorRampPalette(c("#99fa8d","#fa8d8d"))(20) #green to red
         #color cells based on values
         df %>% formatStyle(names(purchase_price_table)[2:6],  backgroundColor = styleInterval(brks, clrs),  default="white") 
     } else {
@@ -582,7 +593,7 @@ output$CostOfOwnershipTable <- renderDataTable({
     if(!all(is.na(cost_ownership_table[,2:6]))){
         xr <- as.numeric(cost_ownership_table[,2:6])
         brks <- seq(from=min(xr, na.rm=T), to=max(xr, na.rm=T), length.out=19) 
-        clrs <- colorRampPalette(c("green","red"))(20)
+        clrs <- colorRampPalette(c("#99fa8d","#fa8d8d"))(20) #green to red
         #color cells based on values
         df %>% formatStyle(names(cost_ownership_table)[2:6],  backgroundColor = styleInterval(brks, clrs),  default="white") 
     } else {
@@ -595,14 +606,14 @@ output$CostOfOwnershipTable <- renderDataTable({
 
 
 output$car_resell_info <- renderUI({
-  HTML(paste0('<b>','Cost after accounting for resale value','</b>'))
+  HTML(paste0('<b>','Cost of ownership after accounting for resale value','</b>'))
 })
 
 #Final cost after resell and breakdown
 output$BreakdownCostTable <- renderDataTable({
     breakdown_cost_table <- comparisonData$final_cost[c("Purchase Price", "Operational Cost", "Remaining Value"),]
 
-    breakdown_cost_table$Tips <- c( "Purchase price after accounting for MSRP, delivery fees, taxes and rebates", paste0("Total expenses over ", input$keep_years," years of ownership"), paste0("Resell value. Account for purchase price and depreciation."))
+    breakdown_cost_table$Tips <- c( "Purchase price after accounting for MSRP, delivery fees, taxes and rebates", paste0("Total expenses over ", input$keep_years," years of ownership"), paste0("Resale value. Account for purchase price and depreciation."))
     df <- datatable(breakdown_cost_table, rownames=FALSE, selection = list(mode = 'single'),
         options = list(ordering=FALSE, autoWidth = F, pageLength = 20, dom = 't',
             rowCallback = JS(
@@ -617,20 +628,17 @@ output$BreakdownCostTable <- renderDataTable({
             ) 
         )                
     )
-    df
- 
+    df 
 })
-
-
 
 
 
 output$CarFinalCostTable <- renderDataTable({
     final_cost_table <- comparisonData$final_cost["Final Cost",1:6,drop=FALSE] 
-    colnames(bla) <- LETTERS[1:ncol(bla)] #placeholder
+    colnames(final_cost_table) <- LETTERS[1:ncol(final_cost_table)] #placeholder
 
-    final_cost_table[1,1] <- "Cost after resell" #change the label
-    final_cost_table$Tips <- c(paste0("Total cost of the car after accounting for resale value"))
+    final_cost_table[1,1] <- "Cost of ownership after resale" #change the label
+    final_cost_table$Tips <- c(paste0("Cost of ownership after accounting for purchase price, operational cost, minus the resale value"))
     colnames(final_cost_table) <- LETTERS[1:ncol(final_cost_table)] #placeholder for rowCallback which doesn't accept empty colnames
 
     df <- datatable(final_cost_table, rownames=FALSE, colnames = rep("", ncol(final_cost_table)),
@@ -652,7 +660,7 @@ output$CarFinalCostTable <- renderDataTable({
     if(!all(is.na(final_cost_table[,2:6]))){
         xr <- as.numeric(final_cost_table[,2:6])
         brks <- seq(from=min(xr, na.rm=T), to=max(xr, na.rm=T), length.out=19) 
-        clrs <- colorRampPalette(c("green","red"))(20)
+        clrs <- colorRampPalette(c("#99fa8d","#fa8d8d"))(20) #green to red
         #color cells based on values
         df %>% formatStyle(names(final_cost_table)[2:6],  backgroundColor = styleInterval(brks, clrs),  default="white") 
     } else {
@@ -661,44 +669,134 @@ output$CarFinalCostTable <- renderDataTable({
 
  })
 
-#END TESTING
-####################################################################################
 
 #### CAR COMPARISON PLOT #### 
 
-car_comparison_plot_data <- reactive({
+car_comparison_plot <- reactive({
     df <- comparisonData$cost_over_years
     colnames(df) <- make.unique(colnames(df))
-    df_long <- melt(as.matrix(df[,-which(colnames(df)=="Year")]), na.rm=T , varnames="Year", value.name = "Ownership_Cost")
-    colnames(df_long) <- c("Year", "Model", "Ownership_Cost")
-    p <- ggplot(df_long, aes(x=Year, color=Model, y=Ownership_Cost)) + geom_line(lwd=1) + geom_point(size=3)
-    p <- p +  scale_y_continuous(limits = c(0, max(df_long$Ownership_Cost + 5000))) + scale_x_continuous(limits = c(1, input$keep_years), breaks = seq(from=0, to=input$keep_years, by=5), minor_breaks = seq(from=0, to=input$keep_years, by=1))
+    df$point_type <- "Cost of ownership" #"circle"
+
+# DF1 <<- df
+
+
+    CD <<- comparisonData$final_cost
+    purchase_price <- CD["Purchase Price",,drop=FALSE]
+    purchase_price$point_type <- "Purchase Price" # "triangle"
+    colnames(purchase_price) <- colnames(df)
+    purchase_price[1,"Year"] <- 0
+    df <- rbind(df,purchase_price)
+
+    df_long <- melt(df, id.vars=c("Year", "point_type"), na.rm=TRUE)
+    colnames(df_long) <- c("Year", "point_type", "Model", "Cost")
+    df_long$Cost <- as.numeric(df_long$Cost)
+    df_long$Year <- as.numeric(df_long$Year)
+
+    p <- ggplot(df_long, aes(x=Year, color=Model, y=Cost, shape=point_type)) + geom_line(lwd=1) + geom_point(size=3) #assign arbitrary alpha, we will define the range later
+    p <- p + scale_y_continuous(limits = c(0, max(df_long$Cost))) + scale_x_continuous(limits = c(0, input$keep_years), breaks = seq(from=0, to=input$keep_years, by=5), minor_breaks = seq(from=0, to=input$keep_years, by=1))
     p <- p + theme_minimal() + ylab("Ownership Cost") + xlab("Years")
     p <- p + theme(panel.grid.major.x = element_line(size = 2), panel.grid.minor.x = element_line(color="grey"))
+    # p <- p + scale_alpha_identity() #define the range of the alpa values here
     p
-    })
+ })
 
-car_final_cost_plot_data <- reactive({
-    df <- comparisonData$final_cost[c("Depreciation Cost",  "Operational Cost"),]
+car_final_cost_plot <- reactive({
+    df <- comparisonData$final_cost[c("Depreciation Cost", "Operational Cost"),]
     colnames(df) <- make.unique(colnames(df))
-    df_long <- melt(as.matrix(Breakdown[,-which(colnames(df)=="Breakdown")]), na.rm=T , varnames="Breakdown")
+DF2 <<- df
+    df_long <- melt(as.matrix(df[,-which(colnames(df)=="Breakdown")]), na.rm=T , varnames="Breakdown")
     colnames(df_long) <- c("Breakdown", "Model", "Cost")
     df_long$Cost <- as.numeric(df_long$Cost)
-    p <- ggplot(df_long, aes(x=Model, y=Cost, fill=Breakdown)) + geom_bar(stat = "identity")
 
+    p <- ggplot(df_long, aes(x=Model, y=Cost, fill=Breakdown)) + geom_bar(stat = "identity", lwd=3)
+    max_y <- max(comparisonData$cost_over_years, na.rm=TRUE)  #set ylim the same as other plot
+    p <- p + scale_y_continuous(limits = c(0, max_y))
     p <- p + theme_minimal() + ylab("Cost") + xlab(NULL)
     p <- p + theme(panel.grid.major.y = element_line(size = 2), panel.grid.major.x=element_blank(), panel.grid.minor.x=element_blank(),
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
-    })
+    p <- p + scale_fill_manual(values=c("Depreciation Cost"="#ff9d4c", "Operational Cost"="#9452a9")) #+ ggtitle("Cost of ownership after resale")
+    p
+})
+
 
 output$CarComparisonPlot <- renderPlotly({
-    p1 <- car_comparison_plot_data() 
-    p2 <- car_final_cost_plot_data()
+    p1 <- car_comparison_plot() 
+    p2 <- car_final_cost_plot()
+P1 <<-   p1
+P2 <<- p2
 
+    #merge plots
     gp1 <- ggplotly(p1, height=800)
     gp2 <- ggplotly(p2, height=800)
-    sp <- subplot(gp1,gp2, widths = c(0.8,0.2), shareY = F)
-    sp %>% layout(hovermode='x', legend = list(orientation = 'h', title="none", y=1, margin = list(l = 20, r = 100)))
+    sp <- subplot(gp1,gp2, widths = c(0.8,0.2), shareY = T, margin=0)
+    # sp <- sp %>% layout(hovermode='x', legend = list(orientation = 'h', title="none", y=1, yanchor="bottom", x=0.5, xanchor="center", margin = list(l = 20, r = 100)) )
+
+    #FORMAT THE LEGEND NICELY:
+    df_long2 <- p1$data
+    #create minimal datasets to force legend display
+    model.df <- data.frame(Year=-1, Cost=0, Model=unique(df_long2$Model))
+    cost_type.df <- data.frame(Year=-1, Cost=0, cost_type=c("Cost of ownership", "Purchase price"))
+    breakdown.df <- data.frame(Year=-1, Cost=0, Breakdown=c("Depreciation Cost", "Operational Cost"))
+
+    markercolors <- gg_color_hue(nrow(model.df))
+
+    #force legend in plotly
+    sp <- sp %>%
+      layout( #hide gglotly legend
+        legend = list(
+          title = list(text = ''),
+          itemclick = FALSE,
+          itemdoubleclick = FALSE,
+          groupclick = FALSE
+        )
+      ) %>%
+      add_trace(
+        data = model.df, x = ~ Year, y = ~ Cost,
+        inherit = FALSE, type = "scatter", mode = "markers",
+        marker = list(color = markercolors, size = 14, opacity = 0.6, symbol = "circle"),
+        name = ~ Model, legendgroup = "Model",  legendgrouptitle = list(text = "Model")
+      ) %>%
+      add_trace(
+        data = cost_type.df, x = ~ Year, y = ~ Cost,
+        inherit = FALSE, type = "scatter",  mode = "markers",
+        marker = list(color = "darkgrey", size = 14, opacity = 0.6, symbol = c("circle", "triangle-up")),
+        name = ~cost_type, legendgroup = "Type", legendgrouptitle = list(text = "Type")
+      )  %>%
+      add_trace( 
+        data = breakdown.df, x = ~ Year, y = ~ Cost,
+        inherit = FALSE, type = "scatter",  mode = "markers",
+        marker = list(color = c("#ff9d4c", "#9452a9"), size = 14, opacity = 0.6, symbol = c("square")),
+        name = ~Breakdown, legendgroup = "Breakdown", legendgrouptitle = list(text = "Breakdown")
+      )  %>% 
+      style(showlegend = FALSE, traces = 1:(nrow(breakdown.df)+2*nrow(model.df))) #remove the 2 Breakdown and the 2 x models legend points
+
+        sp <- sp %>% layout(hovermode='x', legend = list(orientation = 'h', title="none", y=1, yanchor="bottom", x=0.5, xanchor="center", margin = list(l = 20, r = 100)) )
+
+    #Add titles
+    annotations = list( 
+      list( 
+        x = 0.35,  
+        y = 0.95,  
+        text = "Cost of ownership",  
+        xref = "paper",  
+        yref = "paper",  
+        xanchor = "center",  
+        yanchor = "bottom",  
+        showarrow = FALSE 
+      ),  
+      list( 
+        x = 0.88,  
+        y = 0.95,  
+        text = "Cost of ownership after resale",  
+        xref = "paper",  
+        yref = "paper",  
+        xanchor = "center",  
+        yanchor = "bottom",  
+        showarrow = FALSE 
+      )
+    )
+    sp %>% layout(annotations = annotations) 
+
 })
 
 ##############################################################
@@ -711,7 +809,7 @@ output$rebate_table <- renderDT({
   rebate_table <- rebate_table[-grep("Source", rebate_table$Region),,drop=FALSE]
   colnames(rebate_table) <- c(countrySpecificData$names_for_regions, paste0("Maximum Amount (",countrySpecificData$currency_name,")"), "If MSRP below...", "Condition")
   rebate_table
-}, selection = 'single', rownames=FALSE, options = list(pageLength = 20, autoWidth = F))
+}, selection = 'single', rownames=FALSE, options = list(pageLength = 20, autoWidth = F, dom="t"))
 
 output$rebate_source <- renderUI({
   rebate_table <- dataTables$rebates
@@ -727,7 +825,7 @@ output$rebate_source <- renderUI({
     tax_table$Rate <- paste0(as.numeric(tax_table$Rate) * 100, "%")
     colnames(tax_table) <- c("Rate", countrySpecificData$names_for_regions)
     tax_table[,2:1]
-  }, selection = 'single', rownames=FALSE, options = list(pageLength = 20, autoWidth = F))
+  }, selection = 'single', rownames=FALSE, options = list(pageLength = 20, autoWidth = F, dom="t"))
   
   output$tax_source <- renderUI({
     tax_table <- dataTables$taxes
@@ -742,7 +840,7 @@ output$rebate_source <- renderUI({
     gas_table$Region <- rownames(gas_table)
     colnames(gas_table) <- c(paste0(countrySpecificData$gas_rate," (",countrySpecificData$currency_name,")"), countrySpecificData$names_for_regions)
     gas_table[,2:1]
-  }, selection = 'single', rownames=FALSE, options = list(pageLength = 20, autoWidth = F))
+  }, selection = 'single', rownames=FALSE, options = list(pageLength = 20, autoWidth = F, dom="t"))
   
   output$gas_source <- renderUI({
     gas_table <- dataTables$gas
@@ -757,7 +855,7 @@ output$rebate_source <- renderUI({
     electricity_table$Region <- rownames(electricity_table)
     colnames(electricity_table) <- c(paste0(countrySpecificData$electricity_rate, " (",countrySpecificData$currency_name,")"), countrySpecificData$names_for_regions)
     electricity_table[,2:1]
-  }, selection = 'single', rownames=FALSE, options = list(pageLength = 20, autoWidth = F))
+  }, selection = 'single', rownames=FALSE, options = list(pageLength = 20, autoWidth = F, dom="t"))
   
   output$electricity_source <- renderUI({
     electricity_table <- dataTables$electricity
@@ -771,7 +869,7 @@ output$rebate_source <- renderUI({
     delivery_fees_table$Region <- rownames(delivery_fees_table)
     colnames(delivery_fees_table) <- c(paste0("Amount (",countrySpecificData$currency_name,")"),countrySpecificData$names_for_regions)
     delivery_fees_table[,2:1]
-  }, selection = 'single', rownames=FALSE, options = list(pageLength = 20, autoWidth = F))
+  }, selection = 'single', rownames=FALSE, options = list(pageLength = 20, autoWidth = F, dom="t"))
   
   #### DEFAULT MODEL VARIABLES #### 
   output$default_model_variable_table <- renderDT({
@@ -780,13 +878,16 @@ output$rebate_source <- renderUI({
             "ICE maintenance (yearly)"=paste0(countrySpecificData$currency_symbol, dataVariable$ice_maintenance), 
             "BEV efficiency"=paste(dataVariable$bev_efficiency, countrySpecificData$electricity_efficiency),
             "BEV maintenance (yearly)"=paste0(countrySpecificData$currency_symbol, dataVariable$bev_maintenance), 
-            "Depreciation rate (yearly)"=paste0(dataVariable$depreciation_rate*100, "%"), 
             "Gas price increase (yearly)"=paste0(dataVariable$gas_increase, countrySpecificData$currency_symbol_cent),
-            "Electricity price increase (yearly)"=paste0(dataVariable$electricity_increase, countrySpecificData$currency_symbol_cent)) 
+            "Electricity price increase (yearly)"=paste0(dataVariable$electricity_increase, countrySpecificData$currency_symbol_cent),
+            "Depreciation rate (yearly)"=paste0(dataVariable$depreciation_rate*100, "%"), 
+            "Depreciation value at 10 years"=paste0(dataVariable$depreciation_value_10year*100, "%")) 
             #Depreciation at 10 years: 25%
       model_variable_table <- data.frame(Parameters=names(default_variables),
                                          Values=default_variables)
       model_variable_table
-  }, selection = 'single', rownames=FALSE, options = list(pageLength = 20, autoWidth = F))
-#REMOVE SEARCH BAR IN TABLES  
+  }, selection = 'single', rownames=FALSE, options = list(pageLength = 20, autoWidth = F, dom="t"))
+
+
+
 }
