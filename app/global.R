@@ -13,7 +13,7 @@ library(ggplot2)
 library(plotly)
 library(reshape2)
 library(shinyBS)
-
+library(conductor)
 
 calculate_depreciation_rate <- function(depreciation_n_years, n_years){
 	#e.g. depreciation after 10 years is 25% of MSRP, yearly depreciation is 0.25^(1/10)=0.87

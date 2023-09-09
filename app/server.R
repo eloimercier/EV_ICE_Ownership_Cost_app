@@ -28,6 +28,9 @@ server <- function(input, output, session) {
     modelVariableTable <- reactiveValues(df=NA) #store variable needed for computation
     comparisonData <- reactiveValues(cost_over_years=NA, final_cost=NA)
 
+    reVal <- reactiveValues(current_step="step0", step_completed=c(1:4))
+
+
 ##############################################################
 ######################### READ DATA ##########################
 ##############################################################
@@ -46,8 +49,106 @@ server <- function(input, output, session) {
 		dataTables$delivery_fees <- read.xlsx("data/EV_list_Canada.xlsx", sheet="Fees", rowNames = TRUE)
 	})
 
+
 ##############################################################
-######################### SETUP ##########################
+######################## WALKTHROUGH #########################
+##############################################################
+
+walkthrough <- Conductor$new(
+    exitOnEsc = FALSE,
+    keyboardNavigation = TRUE)$
+    step(title="Welcome!", text="Welcome to the Electric Vehicle Comparison Tool!<br><br><h5>Press `Escape` to exit this walkthrough.</h5>",id = "1")$
+    step(title="Select your region", text="This is where you select your region. <i>This will determine the parameters such has potential rebates, electricity price, etc.</i>", el="#region", id = "2")$
+    step(title="Enter the kms driven", text="This is the number of kilometers that you expect to be driven each year, in average.<br><br>You can modify this value later to see how it affects the model.", el="#yearly_kms", id = "3")$
+    step(title="Enter the duration of ownership", text="This is how long you are planning on keeping your next vehicle. This will determine the resale value of the vehicle.", el="#keep_years", id = "4")$
+    step(title="Comparison tool", cancelIcon = list(enabled = TRUE, label = "Close"),text="This is where you compare cars.", id = "5")$
+    step(title="Select cars for comparison", text="Select up to 5 cars for comaprison among the list available", el="#CarMake1UI", id = "6")$
+    step(title="Update model parameters", text="Default parameters are automatically applied. You can edit them by double-clicking a cell to enter your own value.", id = "7")$
+    step(title="Cost of ownership", text="This is how much you can expect to have spent at the end of the period.", el="#CostOfOwnershipTable", id = "8")$
+    step(title="Cost of ownership after resale", text="Assuming you resale the vehicle at the end of the period, this is how much it did cost you.", el="#CarFinalCostTable", id = "9")$
+    step(title="Plot of cost of ownership", text="This is another representation of the cost of ownership.", id = "10")$
+    step(title="AAAA", text="This is another step", id = "11")$
+    step(title="BBBB", text="One last step", id = "12")
+
+    # step(title="Model parameters", text="Your country and region selection determines the potential rebates and costs. You can find all the information in the different tabs here.",  id = "5")$
+    # step(title="Model parameters", text="Youre.",  id = "6")$
+    # step(title="Model parameters", text="Your country and region selection determines the potential rebates and costs. You can find all the information in the different tabs here. \n You will be able to adjust them later if they do not correspond to your situation", el="#default_model_variable_table", id = "7")
+
+    observeEvent(input$walkthroughBtn,{
+        #start walktorugh
+        walkthrough$init()$start()
+        reVal$current_step <- walkthrough$getCurrentStep()
+    })
+
+
+    observe({
+        current_step <- walkthrough$getCurrentStep()
+        # if(identical(current_step, "5")){
+        #     updateTabItems(session, inputId="sidebarID", selected="params")
+        #     reVal$current_step <- current_step
+        # } 
+
+        # if(identical(current_step, "6")){
+        #     updateTabsetPanel(session, inputId="param_panels", selected="default_model_variable")
+        # }
+        if(identical(current_step, "2")){
+          updateSelectInput(session,"region", selected = "Ontario")
+
+        } else if(identical(current_step, "5") & !(5 %in% reVal$step_completed)){
+            updateTabItems(session, inputId="sidebarID", selected="compare")
+            updateSelectInput(session,"make1", selected = "Audi")
+            updateSelectInput(session,"make2", selected = "Honda")
+            reVal$step_completed <- 1:5
+        } else if(identical(current_step, "7")){
+            updateCollapse(session, id="model_variable_table_collapsible", open = "model_variable_collapse", close = NULL, style = NULL)
+        } else if(identical(current_step, "10")){
+            updateTabsetPanel(session, inputId="comparison_panels", selected="plot")
+        } else if (identical(current_step, "11")) { #reset options when we reach end of tour or if tour cancel
+            updateSelectInput(session,"region", selected = "")
+            # updateSelectInput(session,"make1", selected = "")
+            # updateSelectInput(session,"make2", selected = "")
+        }
+
+    })
+
+
+  # observeEvent(walkthrough$isActive(), {
+  #    updateSelectInput(session,"region", selected = "Ontario")
+
+  # })
+
+
+
+
+# observe({
+#     is_walktrhough_active <- walkthrough$isActive()
+#     step <- reVal$current_step
+#     if(identical(is_walktrhough_active,TRUE)){ 
+#         updateSelectInput(session,"region", selected = "Ontario")
+#         updateSelectInput(session,"make1", selected = "Audi")
+#         updateSelectInput(session,"make2", selected = "Honda")
+#     } else if(identical(step, "step0")){
+#     updateSelectInput(session,"region", selected = "")
+#     updateSelectInput(session,"make1", selected = "")
+#     updateSelectInput(session,"make2", selected = "")
+# reVal$current_step <- "TOTO"
+#     }
+#     })
+
+# #check whether walkthrough is running or not
+# is_walktrhough_active <- walkthrough$isActive()
+# if(identical(is_walktrhough_active,TRUE)){ #if running change setting
+# updateSelectizeInput(session,"dataset_selected", selected = dataSetList$datasets[[1]][1])
+# dataTable$selected_row <- 2
+# dataTable$show_nrows <- 6
+# } else { #reset default setting
+# updateSelectizeInput(session,"dataset_selected", selected = "")
+# dataTable$selected_row <- NULL
+# dataTable$show_nrows <- 25
+# }
+
+##############################################################
+######################### USER INFO ##########################
 ##############################################################
 
 
@@ -76,6 +177,14 @@ output$setupUI <- renderUI({
   			    )
         )
 })
+
+output$modelVariableUI <- renderUI({
+  tagList(
+    numericInput("yearly_kms", "Km driven yearly:", 10000, min = 1, max = 100000, step=1000),
+    numericInput("keep_years", "How many years do you intend to keep the car for:", 10, min = 1, max = 20, step=1)
+  )
+})
+
 	
 observe({
   if(!is.null(input$region) & !identical(input$region,'')){
@@ -209,12 +318,6 @@ output$car_table <- renderDataTable({
 ######################### COMPARISON #########################
 ##############################################################
 
-output$modelVariableUI <- renderUI({
-  tagList(
-    numericInput("yearly_kms", "Km driven yearly:", 10000, min = 1, max = 50000, step=1000),
-    numericInput("keep_years", "How many years will you keep the car for:", 10, min = 1, max = 20, step=1)
-  )
-})
 
 #### CAR SELECTION UI #### 
 
@@ -880,8 +983,8 @@ output$rebate_source <- renderUI({
             "BEV maintenance (yearly)"=paste0(countrySpecificData$currency_symbol, dataVariable$bev_maintenance), 
             "Gas price increase (yearly)"=paste0(dataVariable$gas_increase, countrySpecificData$currency_symbol_cent),
             "Electricity price increase (yearly)"=paste0(dataVariable$electricity_increase, countrySpecificData$currency_symbol_cent),
-            "Depreciation rate (yearly)"=paste0(dataVariable$depreciation_rate*100, "%"), 
-            "Depreciation value at 10 years"=paste0(dataVariable$depreciation_value_10year*100, "%")) 
+            "Depreciation rate (yearly)"=paste0(dataVariable$depreciation_rate, "%"), 
+            "Depreciation value at 10 years"=paste0(dataVariable$depreciation_value_10year, "%")) 
             #Depreciation at 10 years: 25%
       model_variable_table <- data.frame(Parameters=names(default_variables),
                                          Values=default_variables)

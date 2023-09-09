@@ -1,6 +1,6 @@
 
 ui <- dashboardPage(skin = "green",
-                    
+
 ##############################################################
 ############################ HEADER ##########################
 ##############################################################
@@ -20,8 +20,8 @@ ui <- dashboardPage(skin = "green",
 
     dashboardSidebar(
       tags$style("@import url(https://use.fontawesome.com/releases/v5.7.2/css/all.css);"), #to load all fonts
-        sidebarMenu(
-            menuItem("Setup", tabName = "setup", icon = icon("user")),
+        sidebarMenu(id="sidebarID",
+            menuItem("User Info", tabName = "setup", icon = icon("user")),
             menuItem("Car List", tabName = "carlist", icon = icon("list")),
             menuItem("Compare", tabName = "compare", icon = icon("chart-line")),
             menuItem("Parameters", tabName = "params", icon = icon("database"))
@@ -34,13 +34,14 @@ ui <- dashboardPage(skin = "green",
 
     dashboardBody(
       
- 
+     useConductor(), #for dynamic walkthrough
       
         tabItems(
 ############################
 #SETUP
 ############################
         tabItem(tabName = "setup",
+            actionButton("walkthroughBtn", label="Interactive Walkthrough", icon.library="font awesome",css.class='sc-button'),
             uiOutput("setupUI"),
             uiOutput("modelVariableUI"),
             div(style = "height:20px"),
@@ -80,12 +81,11 @@ tabItem(tabName = "compare",
             
             HTML("<b>Parameters used to estimate cost of ownership</b>"),
             bsCollapse(id = "model_variable_table_collapsible", open = NULL,
-
-                bsCollapsePanel("Model Variables  <click here to edit>", 
+                bsCollapsePanel("Model Variables  <click here to edit>", value="model_variable_collapse",
                     uiOutput("model_variable_info"),
                     dataTableOutput("CarSelectedVariableTable"), 
                     style="info")
-            ),            
+            ),
             div(style = "height:20px")
         ),
 
@@ -93,7 +93,7 @@ tabItem(tabName = "compare",
         column(12,
             HTML('<b>Cost of ownership based on model variables</b>'),
 
-            tabsetPanel(
+            tabsetPanel(id="comparison_panels",
                 tabPanel("Table", 
 
                     fluidRow(
@@ -112,7 +112,7 @@ tabItem(tabName = "compare",
                         dataTableOutput("CarFinalCostTable")
                     )
                 ),
-                tabPanel("Plot", 
+                tabPanel(title="Plot", value="plot",
                     plotlyOutput("CarComparisonPlot")
                 )      
             )
@@ -131,13 +131,13 @@ tabItem(tabName = "compare",
 ############################
 
         tabItem(tabName = "params",
-                tabsetPanel(
-                  tabPanel("Rebates",  DTOutput("rebate_table", width="800px"), uiOutput("rebate_source")),
-                  tabPanel("Taxes",  DTOutput("tax_table", width="600px"), uiOutput("tax_source")),
-                  tabPanel("Gas",  DTOutput("gas_table", width="600px"), uiOutput("gas_source")),
-                  tabPanel("Electricity",  DTOutput("electricity_table", width="600px"), uiOutput("electricity_source")),
-                  tabPanel("Delivery Fees",  DTOutput("delivery_fees_table", width="600px")),
-                  tabPanel("Default Model Variables",  DTOutput("default_model_variable_table", width="600px"))
+                tabsetPanel(id="param_panels",
+                  tabPanel(title="Rebates",  DTOutput("rebate_table", width="800px"), uiOutput("rebate_source")),
+                  tabPanel(title="Taxes",  DTOutput("tax_table", width="600px"), uiOutput("tax_source")),
+                  tabPanel(title="Gas",  DTOutput("gas_table", width="600px"), uiOutput("gas_source")),
+                  tabPanel(title="Electricity",  DTOutput("electricity_table", width="600px"), uiOutput("electricity_source")),
+                  tabPanel(title="Delivery Fees",  DTOutput("delivery_fees_table", width="600px")),
+                  tabPanel(title="Default Model Variables", value="default_model_variable", DTOutput("default_model_variable_table", width="600px"))
                 )
         )
 
