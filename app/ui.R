@@ -21,7 +21,7 @@ ui <- dashboardPage(skin = "green",
     dashboardSidebar(
       tags$style("@import url(https://use.fontawesome.com/releases/v5.7.2/css/all.css);"), #to load all fonts
         sidebarMenu(id="sidebarID",
-            menuItem("User Info", tabName = "setup", icon = icon("user")),
+            menuItem("User Info", tabName = "user_info", icon = icon("user")),
             menuItem("Car List", tabName = "carlist", icon = icon("list")),
             menuItem("Compare", tabName = "compare", icon = icon("chart-line")),
             menuItem("Parameters", tabName = "params", icon = icon("database"))
@@ -38,11 +38,11 @@ ui <- dashboardPage(skin = "green",
       
         tabItems(
 ############################
-#SETUP
+#USER INFO
 ############################
-        tabItem(tabName = "setup",
+        tabItem(tabName = "user_info",
             actionButton("walkthroughBtn", label="Interactive Walkthrough", icon.library="font awesome",css.class='sc-button'),
-            uiOutput("setupUI"),
+            uiOutput("user_infoUI"),
             uiOutput("modelVariableUI"),
             div(style = "height:20px"),
             uiOutput("rebate_info")

@@ -55,24 +55,33 @@ server <- function(input, output, session) {
 ##############################################################
 
 walkthrough <- Conductor$new(
-    exitOnEsc = FALSE,
+    exitOnEsc = TRUE,
     keyboardNavigation = TRUE)$
-    step(title="Welcome!", text="Welcome to the Electric Vehicle Comparison Tool!<br><br><h5>Press `Escape` to exit this walkthrough.</h5>",id = "1")$
-    step(title="Select your region", text="This is where you select your region. <i>This will determine the parameters such has potential rebates, electricity price, etc.</i>", el="#region", id = "2")$
-    step(title="Enter the kms driven", text="This is the number of kilometers that you expect to be driven each year, in average.<br><br>You can modify this value later to see how it affects the model.", el="#yearly_kms", id = "3")$
-    step(title="Enter the duration of ownership", text="This is how long you are planning on keeping your next vehicle. This will determine the resale value of the vehicle.", el="#keep_years", id = "4")$
-    step(title="Comparison tool", cancelIcon = list(enabled = TRUE, label = "Close"),text="This is where you compare cars.", id = "5")$
-    step(title="Select cars for comparison", text="Select up to 5 cars for comaprison among the list available", el="#CarMake1UI", id = "6")$
-    step(title="Update model parameters", text="Default parameters are automatically applied. You can edit them by double-clicking a cell to enter your own value.", id = "7")$
-    step(title="Cost of ownership", text="This is how much you can expect to have spent at the end of the period.", el="#CostOfOwnershipTable", id = "8")$
-    step(title="Cost of ownership after resale", text="Assuming you resale the vehicle at the end of the period, this is how much it did cost you.", el="#CarFinalCostTable", id = "9")$
-    step(title="Plot of cost of ownership", text="This is another representation of the cost of ownership.", id = "10")$
-    step(title="AAAA", text="This is another step", id = "11")$
-    step(title="BBBB", text="One last step", id = "12")
-
-    # step(title="Model parameters", text="Your country and region selection determines the potential rebates and costs. You can find all the information in the different tabs here.",  id = "5")$
-    # step(title="Model parameters", text="Youre.",  id = "6")$
-    # step(title="Model parameters", text="Your country and region selection determines the potential rebates and costs. You can find all the information in the different tabs here. \n You will be able to adjust them later if they do not correspond to your situation", el="#default_model_variable_table", id = "7")
+    step(title="<b>Welcome!</b>", text="Welcome to the Electric Vehicle Comparison Tool!",id = "first")$
+    step(title="<b>Enter your info</b>", text="This is where you select your region, the distance driven annually and how long you intend to keep the car for.", el="#region", 
+        id = "user_info.1")$
+    step(title="<b>Enter your info</b>", text="This will determine the model parameters such has potential rebates, electricity price, resale value, etc.", el="#region", 
+        id = "user_info.2")$
+    step(title="<b>Comparison tool</b>",text="This is the comparison tool. It allows you to compare up to 5 cars and see how much it will cost you at the end of the period.", 
+        id = "comparator.transistion", buttons = list(list(action = "next",text = "Next")))$
+    step(title="<b>Select cars for comparison</b>", text="Select the make, model and trim among the available cars.", el="#CarMake1UI", 
+        id = "comparator.1")$
+    step(title="<b>Default model parameters</b>", text="Default parameters are automatically applied based on the user info.<br><br><i>Note: the default parameters are taken from the tables in the 'Parameters' tab.</i>",el="#CarSelectedVariableTable", 
+        id = "comparator.2")$
+    step(title="<b>Costumize model parameters</b>", text="You can fully customize the model if the default values do not match your profile.<br><br><i>Edit the parameters by double-clicking a cell and enter a new value.</i>",el="#CarSelectedVariableTable", 
+        id = "comparator.3")$
+    step(title="<b>Cost of ownership</b>", text="The tool calculates the cost of ownership over the period.<br><br>This is how much you can expect to have spent at the end of the period.", el="#CarComparisonTable", 
+        id = "comparator.4")$
+    step(title="<b>Cost of ownership after resale</b>", text="Assuming you resale the vehicle at the end of the period, this is how much it did cost you.", el="#CarFinalCostTable", 
+        id = "comparator.5")$
+    step(title="<b>Comparison plot</b>", text="This is a graphical representation of the cost of ownership.", el="#plot",
+        id = "compararison_plot.transistion", buttons = list(list(action = "next",text = "Next")))$
+    step(title="<b>Comparison plot</b>", text="Here you can see that the Honda CRV end up beeing more expensive that the Hyundai IONIQ5 after 8 years.", el="#CarComparisonPlot", 
+        id = "compararison_plot.2")$
+    step(title="<b>Change your info</b>", text="You can always change the parameters here to see how it affects the model.", 
+        id = "clear_walkthrough_options")$
+    step(title="<b>Questions or Comments?</b>", text='Visit my <a href="https://github.com/eloimercier/EV_app">github repo</a> if you have any questions or comments.', 
+        id = "last", buttons = list(list(action = "back",secondary = TRUE, text = "Previous"),list(action = "next",text = "Finish")))
 
     observeEvent(input$walkthroughBtn,{
         #start walktorugh
@@ -80,72 +89,40 @@ walkthrough <- Conductor$new(
         reVal$current_step <- walkthrough$getCurrentStep()
     })
 
-
     observe({
         current_step <- walkthrough$getCurrentStep()
-        # if(identical(current_step, "5")){
-        #     updateTabItems(session, inputId="sidebarID", selected="params")
-        #     reVal$current_step <- current_step
-        # } 
 
-        # if(identical(current_step, "6")){
-        #     updateTabsetPanel(session, inputId="param_panels", selected="default_model_variable")
-        # }
-        if(identical(current_step, "2")){
-          updateSelectInput(session,"region", selected = "Ontario")
-
-        } else if(identical(current_step, "5") & !(5 %in% reVal$step_completed)){
-            updateTabItems(session, inputId="sidebarID", selected="compare")
-            updateSelectInput(session,"make1", selected = "Audi")
-            updateSelectInput(session,"make2", selected = "Honda")
-            reVal$step_completed <- 1:5
-        } else if(identical(current_step, "7")){
-            updateCollapse(session, id="model_variable_table_collapsible", open = "model_variable_collapse", close = NULL, style = NULL)
-        } else if(identical(current_step, "10")){
-            updateTabsetPanel(session, inputId="comparison_panels", selected="plot")
-        } else if (identical(current_step, "11")) { #reset options when we reach end of tour or if tour cancel
-            updateSelectInput(session,"region", selected = "")
-            # updateSelectInput(session,"make1", selected = "")
-            # updateSelectInput(session,"make2", selected = "")
+        #step options for walkthrough
+        if(identical(current_step, "first")){
+            updateSelectInput(session,"region", selected = "Ontario")
         }
+        #reset options at the end
+        if (identical(current_step, "clear_walkthrough_options")) { #reset options when we reach end of tour or if tour cancel
+            updateSelectInput(session,"region", selected = "")
+            updateSelectInput(session,"make1", selected = "")
+            updateSelectInput(session,"make2", selected = "")
+            updateCollapse(session, id="model_variable_table_collapsible", open = NULL, close = "model_variable_collapse", style = NULL)
+            updateTabItems(session, inputId="sidebarID", selected="user_info")
+        }
+
+
+        #actions at specific steps
+        if(identical(current_step, "comparator.transistion")){
+            updateTabItems(session, inputId="sidebarID", selected="compare")
+            updateSelectInput(session,"make1", selected = "Honda")
+            updateSelectInput(session,"make2", selected = "Hyundai")
+            updateSelectInput(session,"model1", selected = "CRV")
+            updateSelectInput(session,"model2", selected = "IONIQ 5")
+            updateCollapse(session, id="model_variable_table_collapsible", open = "model_variable_collapse", close = NULL, style = NULL)
+        }
+        if(identical(current_step, "compararison_plot.transistion")){
+            updateTabsetPanel(session, inputId="comparison_panels", selected="plot")
+        }
+
 
     })
 
 
-  # observeEvent(walkthrough$isActive(), {
-  #    updateSelectInput(session,"region", selected = "Ontario")
-
-  # })
-
-
-
-
-# observe({
-#     is_walktrhough_active <- walkthrough$isActive()
-#     step <- reVal$current_step
-#     if(identical(is_walktrhough_active,TRUE)){ 
-#         updateSelectInput(session,"region", selected = "Ontario")
-#         updateSelectInput(session,"make1", selected = "Audi")
-#         updateSelectInput(session,"make2", selected = "Honda")
-#     } else if(identical(step, "step0")){
-#     updateSelectInput(session,"region", selected = "")
-#     updateSelectInput(session,"make1", selected = "")
-#     updateSelectInput(session,"make2", selected = "")
-# reVal$current_step <- "TOTO"
-#     }
-#     })
-
-# #check whether walkthrough is running or not
-# is_walktrhough_active <- walkthrough$isActive()
-# if(identical(is_walktrhough_active,TRUE)){ #if running change setting
-# updateSelectizeInput(session,"dataset_selected", selected = dataSetList$datasets[[1]][1])
-# dataTable$selected_row <- 2
-# dataTable$show_nrows <- 6
-# } else { #reset default setting
-# updateSelectizeInput(session,"dataset_selected", selected = "")
-# dataTable$selected_row <- NULL
-# dataTable$show_nrows <- 25
-# }
 
 ##############################################################
 ######################### USER INFO ##########################
@@ -167,7 +144,7 @@ output$githubLink <- renderUI({
   )
   })
 	
-output$setupUI <- renderUI({
+output$user_infoUI <- renderUI({
 	region_list <- unique(dataTables$rebates[,1])
 	region_list <- region_list[-c(which(region_list=="Federal"), grep("Source", region_list))]
         tagList(
@@ -543,23 +520,25 @@ observe({
 
 output$CarSelectedVariableTable <- renderDataTable({
     car_selected_table <- modelVariableTable$df
-    not_editable_cols <- which(sapply(c(input$trim1,input$trim2, input$trim3, input$trim4, input$trim5), function(x){identical(x,"")}, USE.NAMES=F)) #columns without a selection should not be editable
-    car_selected_table$Tips <- c("Purchase price after accounting for MSRP, delivery fees, taxes and rebates", "The distance you drive in a year", "The car efficiency i.e. how much electricity or gas it uses", "Cost of electricty or gas in your area", "An estimation of the yearly electricity or gas increase", "Estimated yearly maintenance cost", "% of MSRP remaining at the end of the period")
-    datatable(car_selected_table, colnames = rep("", ncol(car_selected_table)), rownames=FALSE,
-            selection = list(mode = 'single', target = 'column', selectable = c(-1)),
-            editable = list(target = "cell", disable = list(columns = c(0, not_editable_cols))),
-            options = list( dom = 't', ordering=FALSE, autoWidth = F, pageLength=20,
-                columnDefs = list(
-                                list(className = 'text-center', width="150px", targets = c(0)),
-                                list(className = 'text-center', width="200px", targets = c(1,2,3,4,5)),
-                                list(targets = 6, visible = FALSE)),
-                rowCallback = JS(
-                      "function(row, data) {",
-                      "var full_text = data[6];",
-                      "$('td:eq(0)', row).attr('title', full_text);",
-                                            "}")
-            )                
-    )    
+    if(!is.null(input$trim1)){ #prevent generation of the table before cars have been selected - e.g. whem running walkthrough
+        not_editable_cols <- which(sapply(c(input$trim1,input$trim2, input$trim3, input$trim4, input$trim5), function(x){identical(x,"")}, USE.NAMES=F)) #columns without a selection should not be editable
+        car_selected_table$Tips <- c("Purchase price after accounting for MSRP, delivery fees, taxes and rebates", "The distance you drive in a year", "The car efficiency i.e. how much electricity or gas it uses", "Cost of electricty or gas in your area", "An estimation of the yearly electricity or gas increase", "Estimated yearly maintenance cost", "% of MSRP remaining at the end of the period")
+        datatable(car_selected_table, colnames = rep("", ncol(car_selected_table)), rownames=FALSE,
+                selection = list(mode = 'single', target = 'column', selectable = c(-1)),
+                editable = list(target = "cell", disable = list(columns = c(0, not_editable_cols))),
+                options = list( dom = 't', ordering=FALSE, autoWidth = F, pageLength=20,
+                    columnDefs = list(
+                                    list(className = 'text-center', width="150px", targets = c(0)),
+                                    list(className = 'text-center', width="200px", targets = c(1,2,3,4,5)),
+                                    list(targets = 6, visible = FALSE)),
+                    rowCallback = JS(
+                          "function(row, data) {",
+                          "var full_text = data[6];",
+                          "$('td:eq(0)', row).attr('title', full_text);",
+                                                "}")
+                )                
+        )    
+    }
 },server = TRUE)
 
 #handles the update of the model variable table based on user input
