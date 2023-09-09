@@ -795,12 +795,14 @@ car_comparison_plot <- reactive({
     df_long$Cost <- as.numeric(df_long$Cost)
     df_long$Year <- as.numeric(df_long$Year)
 
-    p <- ggplot(df_long, aes(x=Year, color=Model, y=Cost, shape=point_type)) + geom_line(lwd=1) + geom_point(size=3) #assign arbitrary alpha, we will define the range later
-    p <- p + scale_y_continuous(limits = c(0, max(df_long$Cost))) + scale_x_continuous(limits = c(0, input$keep_years), breaks = seq(from=0, to=input$keep_years, by=5), minor_breaks = seq(from=0, to=input$keep_years, by=1))
-    p <- p + theme_minimal() + ylab("Ownership Cost") + xlab("Years")
-    p <- p + theme(panel.grid.major.x = element_line(size = 2), panel.grid.minor.x = element_line(color="grey"))
-    # p <- p + scale_alpha_identity() #define the range of the alpa values here
-    p
+    if(nrow(df_long)>1){
+        p <- ggplot(df_long, aes(x=Year, color=Model, y=Cost, shape=point_type)) + geom_line(lwd=1) + geom_point(size=3) #assign arbitrary alpha, we will define the range later
+        p <- p + scale_y_continuous(limits = c(0, max(df_long$Cost))) + scale_x_continuous(limits = c(0, input$keep_years), breaks = seq(from=0, to=input$keep_years, by=5), minor_breaks = seq(from=0, to=input$keep_years, by=1))
+        p <- p + theme_minimal() + ylab("Ownership Cost") + xlab("Years")
+        p <- p + theme(panel.grid.major.x = element_line(size = 2), panel.grid.minor.x = element_line(color="grey"))
+        # p <- p + scale_alpha_identity() #define the range of the alpa values here
+        p
+    }
  })
 
 car_final_cost_plot <- reactive({
@@ -811,14 +813,16 @@ DF2 <<- df
     colnames(df_long) <- c("Breakdown", "Model", "Cost")
     df_long$Cost <- as.numeric(df_long$Cost)
 
-    p <- ggplot(df_long, aes(x=Model, y=Cost, fill=Breakdown)) + geom_bar(stat = "identity", lwd=3)
-    max_y <- max(comparisonData$cost_over_years, na.rm=TRUE)  #set ylim the same as other plot
-    p <- p + scale_y_continuous(limits = c(0, max_y))
-    p <- p + theme_minimal() + ylab("Cost") + xlab(NULL)
-    p <- p + theme(panel.grid.major.y = element_line(size = 2), panel.grid.major.x=element_blank(), panel.grid.minor.x=element_blank(),
-        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
-    p <- p + scale_fill_manual(values=c("Depreciation Cost"="#ff9d4c", "Operational Cost"="#9452a9")) #+ ggtitle("Cost of ownership after resale")
-    p
+    if(nrow(df_long)>1){
+        p <- ggplot(df_long, aes(x=Model, y=Cost, fill=Breakdown)) + geom_bar(stat = "identity", lwd=3)
+        max_y <- max(comparisonData$cost_over_years, na.rm=TRUE)  #set ylim the same as other plot
+        p <- p + scale_y_continuous(limits = c(0, max_y))
+        p <- p + theme_minimal() + ylab("Cost") + xlab(NULL)
+        p <- p + theme(panel.grid.major.y = element_line(size = 2), panel.grid.major.x=element_blank(), panel.grid.minor.x=element_blank(),
+            axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+        p <- p + scale_fill_manual(values=c("Depreciation Cost"="#ff9d4c", "Operational Cost"="#9452a9")) #+ ggtitle("Cost of ownership after resale")
+        p
+    }
 })
 
 
@@ -828,77 +832,79 @@ output$CarComparisonPlot <- renderPlotly({
 P1 <<-   p1
 P2 <<- p2
 
-    #merge plots
-    gp1 <- ggplotly(p1, height=800)
-    gp2 <- ggplotly(p2, height=800)
-    sp <- subplot(gp1,gp2, widths = c(0.8,0.2), shareY = T, margin=0)
-    # sp <- sp %>% layout(hovermode='x', legend = list(orientation = 'h', title="none", y=1, yanchor="bottom", x=0.5, xanchor="center", margin = list(l = 20, r = 100)) )
+    if(all(c(!is.null(p1), !is.null(p2)))){
+        #merge plots
+        gp1 <- ggplotly(p1, height=800)
+        gp2 <- ggplotly(p2, height=800)
+        sp <- subplot(gp1,gp2, widths = c(0.8,0.2), shareY = T, margin=0)
+        # sp <- sp %>% layout(hovermode='x', legend = list(orientation = 'h', title="none", y=1, yanchor="bottom", x=0.5, xanchor="center", margin = list(l = 20, r = 100)) )
 
-    #FORMAT THE LEGEND NICELY:
-    df_long2 <- p1$data
-    #create minimal datasets to force legend display
-    model.df <- data.frame(Year=-1, Cost=0, Model=unique(df_long2$Model))
-    cost_type.df <- data.frame(Year=-1, Cost=0, cost_type=c("Cost of ownership", "Purchase price"))
-    breakdown.df <- data.frame(Year=-1, Cost=0, Breakdown=c("Depreciation Cost", "Operational Cost"))
+        #FORMAT THE LEGEND NICELY:
+        df_long2 <- p1$data
+        #create minimal datasets to force legend display
+        model.df <- data.frame(Year=-1, Cost=0, Model=unique(df_long2$Model))
+        cost_type.df <- data.frame(Year=-1, Cost=0, cost_type=c("Cost of ownership", "Purchase price"))
+        breakdown.df <- data.frame(Year=-1, Cost=0, Breakdown=c("Depreciation Cost", "Operational Cost"))
 
-    markercolors <- gg_color_hue(nrow(model.df))
+        markercolors <- gg_color_hue(nrow(model.df))
 
-    #force legend in plotly
-    sp <- sp %>%
-      layout( #hide gglotly legend
-        legend = list(
-          title = list(text = ''),
-          itemclick = FALSE,
-          itemdoubleclick = FALSE,
-          groupclick = FALSE
-        )
-      ) %>%
-      add_trace(
-        data = model.df, x = ~ Year, y = ~ Cost,
-        inherit = FALSE, type = "scatter", mode = "markers",
-        marker = list(color = markercolors, size = 14, opacity = 0.6, symbol = "circle"),
-        name = ~ Model, legendgroup = "Model",  legendgrouptitle = list(text = "Model")
-      ) %>%
-      add_trace(
-        data = cost_type.df, x = ~ Year, y = ~ Cost,
-        inherit = FALSE, type = "scatter",  mode = "markers",
-        marker = list(color = "darkgrey", size = 14, opacity = 0.6, symbol = c("circle", "triangle-up")),
-        name = ~cost_type, legendgroup = "Type", legendgrouptitle = list(text = "Type")
-      )  %>%
-      add_trace( 
-        data = breakdown.df, x = ~ Year, y = ~ Cost,
-        inherit = FALSE, type = "scatter",  mode = "markers",
-        marker = list(color = c("#ff9d4c", "#9452a9"), size = 14, opacity = 0.6, symbol = c("square")),
-        name = ~Breakdown, legendgroup = "Breakdown", legendgrouptitle = list(text = "Breakdown")
-      )  %>% 
-      style(showlegend = FALSE, traces = 1:(nrow(breakdown.df)+2*nrow(model.df))) #remove the 2 Breakdown and the 2 x models legend points
+        #force legend in plotly
+        sp <- sp %>%
+          layout( #hide gglotly legend
+            legend = list(
+              title = list(text = ''),
+              itemclick = FALSE,
+              itemdoubleclick = FALSE,
+              groupclick = FALSE
+            )
+          ) %>%
+          add_trace(
+            data = model.df, x = ~ Year, y = ~ Cost,
+            inherit = FALSE, type = "scatter", mode = "markers",
+            marker = list(color = markercolors, size = 14, opacity = 0.6, symbol = "circle"),
+            name = ~ Model, legendgroup = "Model",  legendgrouptitle = list(text = "Model")
+          ) %>%
+          add_trace(
+            data = cost_type.df, x = ~ Year, y = ~ Cost,
+            inherit = FALSE, type = "scatter",  mode = "markers",
+            marker = list(color = "darkgrey", size = 14, opacity = 0.6, symbol = c("circle", "triangle-up")),
+            name = ~cost_type, legendgroup = "Type", legendgrouptitle = list(text = "Type")
+          )  %>%
+          add_trace( 
+            data = breakdown.df, x = ~ Year, y = ~ Cost,
+            inherit = FALSE, type = "scatter",  mode = "markers",
+            marker = list(color = c("#ff9d4c", "#9452a9"), size = 14, opacity = 0.6, symbol = c("square")),
+            name = ~Breakdown, legendgroup = "Breakdown", legendgrouptitle = list(text = "Breakdown")
+          )  %>% 
+          style(showlegend = FALSE, traces = 1:(nrow(breakdown.df)+2*nrow(model.df))) #remove the 2 Breakdown and the 2 x models legend points
 
         sp <- sp %>% layout(hovermode='x', legend = list(orientation = 'h', title="none", y=1, yanchor="bottom", x=0.5, xanchor="center", margin = list(l = 20, r = 100)) )
 
-    #Add titles
-    annotations = list( 
-      list( 
-        x = 0.35,  
-        y = 0.95,  
-        text = "Cost of ownership",  
-        xref = "paper",  
-        yref = "paper",  
-        xanchor = "center",  
-        yanchor = "bottom",  
-        showarrow = FALSE 
-      ),  
-      list( 
-        x = 0.88,  
-        y = 0.95,  
-        text = "Cost of ownership after resale",  
-        xref = "paper",  
-        yref = "paper",  
-        xanchor = "center",  
-        yanchor = "bottom",  
-        showarrow = FALSE 
-      )
-    )
-    sp %>% layout(annotations = annotations) 
+        #Add titles
+        annotations = list( 
+          list( 
+            x = 0.35,  
+            y = 0.95,  
+            text = "Cost of ownership",  
+            xref = "paper",  
+            yref = "paper",  
+            xanchor = "center",  
+            yanchor = "bottom",  
+            showarrow = FALSE 
+          ),  
+          list( 
+            x = 0.88,  
+            y = 0.95,  
+            text = "Cost of ownership after resale",  
+            xref = "paper",  
+            yref = "paper",  
+            xanchor = "center",  
+            yanchor = "bottom",  
+            showarrow = FALSE 
+          )
+        )
+        sp %>% layout(annotations = annotations) 
+    }
 
 })
 
