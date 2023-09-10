@@ -42,8 +42,10 @@ ui <- dashboardPage(skin = "green",
 ############################
         tabItem(tabName = "user_info",
             actionButton("walkthroughBtn", label="Interactive Walkthrough", icon.library="font awesome",css.class='sc-button'),
-            uiOutput("user_infoUI"),
-            uiOutput("modelVariableUI"),
+            uiOutput("user_countryUI"),
+            uiOutput("user_regionUI"),
+            uiOutput("user_region_specificUI"),
+            uiOutput("user_kms_yearsUI"),
             div(style = "height:20px"),
             uiOutput("rebate_info")
         ),
@@ -94,7 +96,7 @@ tabItem(tabName = "compare",
             HTML('<b>Cost of ownership based on model variables</b>'),
 
             tabsetPanel(id="comparison_panels",
-                tabPanel("Table", 
+                tabPanel("Table", value="table",
 
                     fluidRow(
 
