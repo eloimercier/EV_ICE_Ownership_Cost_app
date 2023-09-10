@@ -31,8 +31,9 @@ server <- function(input, output, session) {
                 gas_efficiency=NA, gas_rate=NA,   electricity_efficiency=NA, electricity_rate=NA,
                 region_list=NA
                 )
-    generalModelData <- reactiveValues(region=NA, country_wide_rebate=NA, country_wide_max_msrp=NA, region_rebate=NA, region_max_msrp=NA, tax=NA, gas_rate=NA, electricity_rate=NA, #region specific
-                                  ice_efficiency=8, ice_maintenance=350, bev_efficiency=15, bev_maintenance=150, depreciation_rate=13, depreciation_value_10year=25, gas_increase=5, electricity_increase=1) #fixed
+    generalModelData <- reactiveValues(country=NA,  region=NA, rebate_condition=NA,
+                                    country_wide_rebate=NA, country_wide_max_msrp=NA, region_rebate=NA, region_max_msrp=NA, tax=NA, gas_rate=NA, electricity_rate=NA, #region specific
+                                    ice_efficiency=8, ice_maintenance=350, bev_efficiency=15, bev_maintenance=150, depreciation_rate=13, depreciation_value_10year=25, gas_increase=5, electricity_increase=1) #fixed
 
     dataTables <- reactiveValues(car_data=NA, rebates=NA, taxes=NA, gas=NA, electricity=NA, fees=NA)
 
@@ -121,18 +122,17 @@ server <- function(input, output, session) {
     observeEvent(input$info, {
         version <- read.table("VERSION")[1,1]
         shinyalert("EV Comparator App", HTML(paste0(version,"<br><br>
-          This document focuses on affordable Battery Electric Vehicles (BEVs) available in Canada. It is not meant to encompass all EVs on the market. A few Internal Combustion Engine (ICE) vehicles have been included to the list for comparison.<br><br>
-          <i>The information in this document are provided for information only with no guarantee of accuracy</i>")), type = "info", html=TRUE) 
+            This document focuses on affordable Battery Electric Vehicles (BEVs) available in Canada. It is not meant to encompass all EVs on the market. A few Internal Combustion Engine (ICE) vehicles have been included to the list for comparison.<br><br>
+            <i>The information in this document are provided for information only with no guarantee of accuracy</i>")), type = "info", html=TRUE) 
     })
 
     output$githubLink <- renderUI({
-      #link to github page
-      tags$li(class = "dropdown",
+        #link to github page
+        tags$li(class = "dropdown",
           tags$a(img(src="https://img.icons8.com/?size=512&id=62856&format=png",  width="48", height="48"), href="https://github.com/eloimercier/EV_app")
-      )
-      })
+        )
+    })
         
-
 
 ##############################################################
 ######################### USER INFO ##########################
@@ -188,15 +188,6 @@ server <- function(input, output, session) {
         }        
     })
 
-    output$is_federation <- reactive( {
-        if(identical(countrySpecificData$is_federation, TRUE)){
-            TRUE
-        }else{
-            FALSE
-        }
-    })
-    outputOptions(output,"is_federation", suspendWhenHidden =FALSE)
-
 
 ######### Setup region specific data
 
@@ -206,78 +197,115 @@ server <- function(input, output, session) {
         } else {
             region_list <- NULL
         }
-        conditionalPanel(condition = "output.is_federation",
-            selectInput('region', paste0(countrySpecificData$names_for_regions,":"), c(Choose='', region_list), selectize=FALSE),
-        )
-        
-    })
-
-    output$has_multiple_rebate_levels <- reactive({
-        is_duplicated_region <- FALSE
-        if(!is.null(input$region) & !identical(input$region,"")){
-            is_duplicated_region <- sum(dataTables$rebates[,"Region"]==input$region)>1 #check if region appears more than once
+        if(length(region_list)>1){
+            selectInput('region', paste0(countrySpecificData$names_for_regions,":"), c(Choose='', region_list), selectize=FALSE)
         }
-        is_duplicated_region
     })
-    outputOptions(output,"has_multiple_rebate_levels", suspendWhenHidden =FALSE) #forces evaluation 
-
 
     output$user_region_specificUI <- renderUI({
         if(!is.null(input$region) & !identical(input$region,"")){
             conditions <-  dataTables$rebates[dataTables$rebates[,"Region"]==input$region,"Condition"]
-            conditionalPanel(condition = "output.has_multiple_rebate_levels",
-                    selectInput("income", "Condition:", as.list(conditions))
-            )
+            if(length(conditions)>1){ 
+                selectInput("rebate_condition", "Condition:", as.list(conditions))
+            } 
         }
     })
 
-    observeEvent(input$region,{
-        if(!is.null(input$region) & !identical(input$region,"")){
 
-            generalModelData$region <- input$region
-            rebates <- rebate_table <- dataTables$rebates
+    observeEvent(c(input$country, input$region,input$rebate_condition),{
 
-            # Calculate rebates
-# AA <<- rebate_table
-# IC <<- input$income
-#             which_region <- rebate_table$Region == input$region & sapply(rebate_table[,"If.MSRP.below..."],function(x){identical(x,input$income)}) #find rebate matching region name and requirement
-#             print(which_region)
+        # 3 situations: 
+        # country is not federation -> get rebate matching country
+        # country is federation -> get rebate matching region
+        # country is federation + multiple rebate conditions -> get rebate matching region + condition
+        if(!is.null(input$country) & !identical(input$country,"")){ #country has been selected
+            rebate_table <- dataTables$rebates
 
+            if(!countrySpecificData$is_federation){ # get rebate matching country
+                rebate_info_country <- rebate_table[rebate_table$Region == input$country,,drop=FALSE]
+                country_wide_rebate <- as.numeric(rebate_info_country[1,"Maximum.amount"])
+                country_wide_max_msrp <- as.numeric(rebate_info_country[1,"If.MSRP.below..."])
+                region_rebate <- region_max_msrp <- NA
 
+            } else if(!is.null(input$region) & !identical(input$region,"")){ #get federal rebate
+                rebate_info_federal <- rebate_table[rebate_table$Region == "Federal",,drop=FALSE]
+                country_wide_rebate <- as.numeric(rebate_info_federal[1,"Maximum.amount"])
+                country_wide_max_msrp <- as.numeric(rebate_info_federal[1,"If.MSRP.below..."])
 
-                generalModelData$region_rebate <-  as.numeric(rebates[rebates[,1] == input$region & rebates[,4]==input$income,"Maximum.amount",drop=TRUE])
-                region_max_msrp <-  as.numeric(rebates[rebates[,1] == input$region & rebates[,4]==input$income,"If.MSRP.below...",drop=TRUE])
-                generalModelData$region_max_msrp <- ifelse(is.na(region_max_msrp),Inf, region_max_msrp)
+                region_info_rebate <- rebate_table[rebate_table[,"Region"]==input$region,,drop=FALSE]
+                if(nrow(region_info_rebate)>1){ # get rebate matching region + condition
+                    region_info_rebate_specific <- region_info_rebate[region_info_rebate[,4]==input$rebate_condition,,drop=FALSE]
+                    region_rebate <- as.numeric(region_info_rebate_specific[1,"Maximum.amount"])
+                    region_max_msrp <- as.numeric(region_info_rebate_specific[1,"If.MSRP.below..."])
+                } else { #get rebate matching region
+                    region_rebate <- as.numeric(region_info_rebate[1,"Maximum.amount"])
+                    region_max_msrp <- as.numeric(region_info_rebate[1,"If.MSRP.below..."])
+                }
 
+                generalModelData$country_wide_rebate <- country_wide_rebate
+                generalModelData$country_wide_max_msrp <- country_wide_max_msrp
 
-            rebates <- dataTables$rebates
-            region_occurences <- table(dataTables$rebates[,"Region"])
-            region_with_multiple_rebate <- names(region_occurences)[region_occurences>1] #which regions has variable rebates?
-            
-            if(countrySpecificData$is_federation){
-                generalModelData$country_wide_rebate <- as.numeric(rebates[rebates[,1] == "Federal","Maximum.amount"])
-                generalModelData$country_wide_max_msrp <- as.numeric(rebates[rebates[,1] == "Federal","If.MSRP.below..."])
+                generalModelData$region_rebate <- region_rebate
+                generalModelData$region_max_msrp <- region_max_msrp
             }
-            
-            if(input$region %in% region_with_multiple_rebate){ #then we look at both region and condition
-                generalModelData$region_rebate <-  as.numeric(rebates[rebates[,1] == input$region & rebates[,4]==input$income,"Maximum.amount",drop=TRUE])
-                region_max_msrp <-  as.numeric(rebates[rebates[,1] == input$region & rebates[,4]==input$income,"If.MSRP.below...",drop=TRUE])
-                generalModelData$region_max_msrp <- ifelse(is.na(region_max_msrp),Inf, region_max_msrp)
-            } else { #we only need to look at region's name
-                generalModelData$region_rebate <-  as.numeric(rebates[rebates[,1] == input$region,"Maximum.amount",drop=TRUE])
-                region_max_msrp <-  as.numeric(rebates[rebates[,1] == input$region,"If.MSRP.below...",drop=TRUE])
-                generalModelData$region_max_msrp <- ifelse(is.na(region_max_msrp),Inf, region_max_msrp)
-            }
 
-            #Set region specific data
-            if(countrySpecificData$is_federation){
-                generalModelData$tax <- 1 + as.numeric(dataTables$taxes["Federal",1]) + as.numeric(dataTables$taxes[input$region,1])
-            } else {
-                generalModelData$tax <- 1 + as.numeric(dataTables$taxes[input$region,1])
-            }
-            generalModelData$gas_rate  <- as.numeric(dataTables$gas[input$region,1])
-            generalModelData$electricity_rate <- as.numeric(dataTables$electricity[input$region,1])
+
         }
+
+
+
+
+
+
+
+
+
+#         if(!is.null(input$region) & !identical(input$region,"")){
+
+#             generalModelData$region <- input$region
+#             rebates <- rebate_table <- dataTables$rebates
+
+#             # Calculate rebates
+# AA <<- rebate_table
+# IC <<- input$rebate_condition
+#             which_region <- rebate_table$Region == input$region & sapply(rebate_table[,"If.MSRP.below..."],function(x){identical(x,input$rebate_condition)}) #find rebate matching region name and requirement
+           
+
+
+
+#                 generalModelData$region_rebate <-  as.numeric(rebates[rebates[,1] == input$region & rebates[,4]==input$rebate_condition,"Maximum.amount",drop=TRUE])
+#                 region_max_msrp <-  as.numeric(rebates[rebates[,1] == input$region & rebates[,4]==input$rebate_condition,"If.MSRP.below...",drop=TRUE])
+#                 generalModelData$region_max_msrp <- ifelse(is.na(region_max_msrp),Inf, region_max_msrp)
+
+
+#             rebates <- dataTables$rebates
+#             region_occurences <- table(dataTables$rebates[,"Region"])
+#             region_with_multiple_rebate <- names(region_occurences)[region_occurences>1] #which regions has variable rebates?
+            
+#             if(countrySpecificData$is_federation){
+#                 generalModelData$country_wide_rebate <- as.numeric(rebates[rebates[,1] == "Federal","Maximum.amount"])
+#                 generalModelData$country_wide_max_msrp <- as.numeric(rebates[rebates[,1] == "Federal","If.MSRP.below..."])
+#             }
+            
+#             if(input$region %in% region_with_multiple_rebate){ #then we look at both region and condition
+#                 generalModelData$region_rebate <-  as.numeric(rebates[rebates[,1] == input$region & rebates[,4]==input$rebate_condition,"Maximum.amount",drop=TRUE])
+#                 region_max_msrp <-  as.numeric(rebates[rebates[,1] == input$region & rebates[,4]==input$rebate_condition,"If.MSRP.below...",drop=TRUE])
+#                 generalModelData$region_max_msrp <- ifelse(is.na(region_max_msrp),Inf, region_max_msrp)
+#             } else { #we only need to look at region's name
+#                 generalModelData$region_rebate <-  as.numeric(rebates[rebates[,1] == input$region,"Maximum.amount",drop=TRUE])
+#                 region_max_msrp <-  as.numeric(rebates[rebates[,1] == input$region,"If.MSRP.below...",drop=TRUE])
+#                 generalModelData$region_max_msrp <- ifelse(is.na(region_max_msrp),Inf, region_max_msrp)
+#             }
+
+#             #Set region specific data
+#             if(countrySpecificData$is_federation){
+#                 generalModelData$tax <- 1 + as.numeric(dataTables$taxes["Federal",1]) + as.numeric(dataTables$taxes[input$region,1])
+#             } else {
+#                 generalModelData$tax <- 1 + as.numeric(dataTables$taxes[input$region,1])
+#             }
+#             generalModelData$gas_rate  <- as.numeric(dataTables$gas[input$region,1])
+#             generalModelData$electricity_rate <- as.numeric(dataTables$electricity[input$region,1])
+#         }
     })
 
 ######### Setup distance and time
