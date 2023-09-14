@@ -1,7 +1,7 @@
 
 server <- function(input, output, session) {
 
-  verbose <- FALSE
+  verbose <- TRUE
   
 #TODO:
   #message in top right corner if no province selected
@@ -15,25 +15,24 @@ server <- function(input, output, session) {
 
     # Available countries
     countryInfo <- list(
-        USA = list(names_for_regions="State", is_federation=TRUE,
+        USA = list(names_for_regions="State", is_federation=TRUE, tax_included=FALSE,
                 currency_name="USD", currency_symbol="$", currency_symbol_cent="¢", distance="kms",
                 gas_efficiency="mpg", gas_rate="¢/L",   electricity_efficiency="m/kWh", electricity_rate="¢/kW"),
-        Canada = list(names_for_regions="Province/Territory", is_federation=TRUE,
+        Canada = list(names_for_regions="Province/Territory", is_federation=TRUE, tax_included=FALSE,
                 currency_name="CAD", currency_symbol="$", currency_symbol_cent="¢", distance="kms",
                 gas_efficiency="L/100kms", gas_rate="¢/L",   electricity_efficiency="kWh/100kms", electricity_rate="¢/kW"),
-        France = list(names_for_regions=NA, is_federation=FALSE,
+        France = list(names_for_regions=NA, is_federation=FALSE, tax_included=TRUE,
                 currency_name="Euro", currency_symbol="€", currency_symbol_cent="Cent", distance="kms",
                 gas_efficiency="L/100kms", gas_rate="€/L",   electricity_efficiency="kWh/100kms", electricity_rate="€/kW")
     )
 
-    countrySpecificData <- reactiveValues(names_for_regions=NA, is_federation=NA,
-                currency_name=NA, currency_symbol=NA, currency_symbol_cent=NA, distance=NA,
-                gas_efficiency=NA, gas_rate=NA,   electricity_efficiency=NA, electricity_rate=NA,
-                region_list=NA
-                )
+    countrySpecificData <- reactiveValues(names_for_regions=NA, is_federation=NA, tax_included=NA,
+                                        currency_name=NA, currency_symbol=NA, currency_symbol_cent=NA, distance=NA,
+                                        gas_efficiency=NA, gas_rate=NA,   electricity_efficiency=NA, electricity_rate=NA,
+                                        region_list=NA )
     generalModelData <- reactiveValues(country=NA,  region=NA, rebate_condition=NA,
-                                    country_wide_rebate=NA, country_wide_max_msrp=NA, region_rebate=NA, region_max_msrp=NA, tax=NA, gas_rate=NA, electricity_rate=NA, #region specific
-                                    ice_efficiency=8, ice_maintenance=350, bev_efficiency=15, bev_maintenance=150, depreciation_rate=13, depreciation_value_10year=25, gas_increase=5, electricity_increase=1) #fixed
+                                        country_wide_rebate=NA, country_wide_max_msrp=NA, region_rebate=NA, region_max_msrp=NA, tax=NA, gas_rate=NA, electricity_rate=NA, #region specific
+                                        ice_efficiency=8, ice_maintenance=350, bev_efficiency=15, bev_maintenance=150, depreciation_rate=13, depreciation_value_10year=25, gas_increase=5, electricity_increase=1) #fixed
 
     dataTables <- reactiveValues(car_data=NA, rebates=NA, taxes=NA, gas=NA, electricity=NA, fees=NA)
 
@@ -146,6 +145,12 @@ server <- function(input, output, session) {
 
     observeEvent(input$country,{
         if(!is.null(input$country) & !identical(input$country,"")){
+
+            if(verbose) print("*********************")
+            if(verbose) print("Setting up country parameters")
+
+            generalModelData$region <- generalModelData$country #set region = country by default
+
             #set up country specific parameters
             country_info <- countryInfo[[input$country]]
             for (i in 1:length(country_info)){
@@ -167,6 +172,10 @@ server <- function(input, output, session) {
             colnames(car_data) <- c("Make","Model", "Trim", "Engine", "MSRP", "Link", "Traction","Range (km)", "AC Charging rate (kW)", "DC Fast Charging rate (kW)","HP")
             dataTables$car_data <- car_data
 
+            #format rebate table
+            dataTables$rebates <- read.xlsx(country_file, sheet="Rebates")
+            # rownames(dataTables$rebates) <- paste0(dataTables$rebates$Region,"_", dataTables$rebates$Condition) #make unique names
+
             #set up region list
             all_regions <- dataTables$rebates[,1]
             if(countrySpecificData$is_federation){ #remove federal
@@ -176,16 +185,32 @@ server <- function(input, output, session) {
             countrySpecificData$region_list <- unique(all_regions)
 
             #set country wide rebate
+            tax_table <- dataTables$taxes
+
             rebates_table <- dataTables$rebates
             if(identical(countrySpecificData$is_federation, TRUE)){
                 generalModelData$country_wide_rebate <- as.numeric(rebates_table[rebates_table[,"Region"] == "Federal", "Maximum.amount"])
-                generalModelData$country_wide_max_msrp <- as.numeric(rebates_table[rebates_table[,"Region"] == "Federal", "If.MSRP.below..."])
+                country_wide_max_msrp <- as.numeric(rebates_table[rebates_table[,"Region"] == "Federal", "If.MSRP.below..."])
+                if(is.na(country_wide_max_msrp)) country_wide_max_msrp <- Inf
+                generalModelData$country_wide_max_msrp <- country_wide_max_msrp
+                generalModelData$region_rebate <- 0 # we will set it up later
+                generalModelData$region_max_msrp <- 0 # we will set it up later
+                generalModelData$tax <- as.numeric(tax_table["Federal",1]) + 0 # we will add region tax later
+                generalModelData$gas_rate  <- 0 # we will set it up later
+                generalModelData$electricity_rate <- 0 # we will set it up later                  
             } else {
                 generalModelData$country_wide_rebate <- as.numeric(rebates_table[rebates_table[,"Region"] == input$country,"Maximum.amount"])
-                generalModelData$country_wide_max_msrp <- as.numeric(rebates_table[rebates_table[,"Region"] == input$country,"If.MSRP.below..."])
+                country_wide_max_msrp <- as.numeric(rebates_table[rebates_table[,"Region"] == input$country,"If.MSRP.below..."])
+                if(is.na(country_wide_max_msrp)) country_wide_max_msrp <- Inf
+                generalModelData$country_wide_max_msrp <- country_wide_max_msrp
+                generalModelData$region_rebate <- 0
+                generalModelData$region_max_msrp <- 0 
+                generalModelData$tax <- as.numeric(tax_table[input$country,1])
+                generalModelData$gas_rate  <- as.numeric(dataTables$gas[input$country,1])
+                generalModelData$electricity_rate <- as.numeric(dataTables$electricity[input$country,1])
             }
 
-        }        
+        }
     })
 
 
@@ -202,6 +227,10 @@ server <- function(input, output, session) {
         }
     })
 
+    # observeEvent(input$region,{
+    #     generalModelData$region <- input$region #set region if specified
+    # })
+
     output$user_region_specificUI <- renderUI({
         if(!is.null(input$region) & !identical(input$region,"")){
             conditions <-  dataTables$rebates[dataTables$rebates[,"Region"]==input$region,"Condition"]
@@ -212,7 +241,7 @@ server <- function(input, output, session) {
     })
 
 
-    observeEvent(c(input$country, input$region,input$rebate_condition),{
+    observeEvent(c(input$region, input$rebate_condition),{
 
         # 3 situations: 
         # country is not federation -> get rebate matching country
@@ -220,54 +249,61 @@ server <- function(input, output, session) {
         # country is federation + multiple rebate conditions -> get rebate matching region + condition
         if(!is.null(input$country) & !identical(input$country,"")){ #country has been selected
 
+            if(!countrySpecificData$is_federation) {
+                stop("This should only be executed when country is a federation. What went wrong?")
+            }
+            if(!is.null(input$region) & !identical(input$region,"")){
 
-            ############## Get rebates
-            rebate_table <- dataTables$rebates
-            if(!countrySpecificData$is_federation){ # get rebate matching country
-                rebate_info_country <- rebate_table[rebate_table$Region == input$country,,drop=FALSE]
-                country_wide_rebate <- as.numeric(rebate_info_country[1,"Maximum.amount"])
-                country_wide_max_msrp <- as.numeric(rebate_info_country[1,"If.MSRP.below..."])
-                region_rebate <- region_max_msrp <- NA
-            } else if(!is.null(input$region) & !identical(input$region,"")){ #get federal rebate
+                if(verbose) print("Setting up region parameters")
+                rebate_table <- dataTables$rebates
+
                 rebate_info_federal <- rebate_table[rebate_table$Region == "Federal",,drop=FALSE]
                 country_wide_rebate <- as.numeric(rebate_info_federal[1,"Maximum.amount"])
                 country_wide_max_msrp <- as.numeric(rebate_info_federal[1,"If.MSRP.below..."])
 
-                region_info_rebate <- rebate_table[rebate_table[,"Region"]==input$region,,drop=FALSE]
+                region <- input$region
+                region_info_rebate <- rebate_table[rebate_table[,"Region"]==region,,drop=FALSE]
                 if(nrow(region_info_rebate)>1){ # get rebate matching region + condition
+                    if(verbose) print("** Multiple rebates exist for this region **")
                     region_info_rebate_specific <- region_info_rebate[region_info_rebate[,4]==input$rebate_condition,,drop=FALSE]
                     region_rebate <- as.numeric(region_info_rebate_specific[1,"Maximum.amount"])
                     region_max_msrp <- as.numeric(region_info_rebate_specific[1,"If.MSRP.below..."])
                 } else { #get rebate matching region
+                    if(verbose) print("** There is only one rebate for that region **")
                     region_rebate <- as.numeric(region_info_rebate[1,"Maximum.amount"])
                     region_max_msrp <- as.numeric(region_info_rebate[1,"If.MSRP.below..."])
                 }
 
+
+                # if rebate not specified (i.e. NA), set rebate to 0
+                if(is.na(country_wide_rebate)) country_wide_rebate <- 0
+                if(is.na(region_rebate)) region_rebate <- 0
+
+                # if max amount not specified (i.e. NA), set max eligible MSRP to Infinite
+                # if(is.na(country_wide_max_msrp)) country_wide_max_msrp <- Inf
+                if(is.na(region_max_msrp)) region_max_msrp <- Inf
+
                 generalModelData$country_wide_rebate <- country_wide_rebate
                 generalModelData$country_wide_max_msrp <- country_wide_max_msrp
+
                 generalModelData$region_rebate <- region_rebate
                 generalModelData$region_max_msrp <- region_max_msrp
-            }
+                generalModelData$region <- region
 
-
-            ############## Get utility rates
-            tax_table <- dataTables$taxes
-            if(!countrySpecificData$is_federation){
-                country_wide_tax <- as.numeric(tax_table[input$country,1])
-                total_tax <- country_wide_tax
-                gas_rate  <- as.numeric(dataTables$gas[input$country,1])
-                electricity_rate <- as.numeric(dataTables$electricity[input$country,1])
-            } else {
-                country_wide_tax <- as.numeric(tax_table["Federal",1])
+                ############## Get utility rates
+                tax_table <- dataTables$taxes
+                country_wide_tax <- generalModelData$country_wide_rebate #as.numeric(tax_table["Federal",1])
                 region_tax <- as.numeric(tax_table[input$region,1])
                 total_tax <- country_wide_tax + region_tax
                 gas_rate  <- as.numeric(dataTables$gas[input$region,1])
                 electricity_rate <- as.numeric(dataTables$electricity[input$region,1])                
+
+                generalModelData$tax <- total_tax
+                generalModelData$gas_rate <- gas_rate
+                generalModelData$electricity_rate <- electricity_rate
+
             }
 
-            generalModelData$tax <- total_tax
-            generalModelData$gas_rate <- gas_rate
-            generalModelData$electricity_rate <- electricity_rate
         }
 
     })
@@ -290,12 +326,16 @@ server <- function(input, output, session) {
         } else if(( is.null(input$region) | identical(input$region,'') ) & countrySpecificData$is_federation){
             HTML('<p style="font-size:20px;"><b>Select your ',countrySpecificData$names_for_regions,' to see how much you can save on the purchase of a new Battery Electric Vehicles (BEV)!</b></p>')
         } else {
-    	# if(!is.null(input$region) & !identical(input$region,'')){
     		country_wide_rebate <- generalModelData$country_wide_rebate
     		federal_msrp <- generalModelData$country_wide_max_msrp
     		region_rebate <- generalModelData$region_rebate
     		region_msrp <- generalModelData$region_max_msrp
     		
+            if(verbose){
+                print(paste0("Country wide rebate: ", country_wide_rebate))
+                print(paste0("Regional rebate: ", region_rebate))
+            }
+
     		country_wide_rebate_text <- ifelse(country_wide_rebate>0,
     		                              paste0("Up to ",country_wide_rebate,"$"),
     		                              "No rebate.")
@@ -305,12 +345,12 @@ server <- function(input, output, session) {
     		federal_msrp_text <- ifelse(federal_msrp<Inf,
                               		  paste0(" on BEVs below $",federal_msrp,"."),
                               		  "")
-    		region_msrp_text <- ifelse(region_msrp>Inf,
+    		region_msrp_text <- ifelse(region_msrp<Inf,
     	                              paste0(" on BEVs below $",region_msrp,"."),
     	                              "")
 
             if(countrySpecificData$is_federation){
-            rebate_max_text <- paste0('<p style="font-size:20px;"><b>','You can benefit from up to <span style="background-color: #FFFF00">', paste0(country_wide_rebate + region_rebate, countrySpecificData$currency_symbol) ,'</span> on the purchase of a new Battery Electric Vehicle (BEV)!','</b></p>')
+                rebate_max_text <- paste0('<p style="font-size:20px;"><b>','You can benefit from up to <span style="background-color: #FFFF00">', paste0(sum(country_wide_rebate, region_rebate, na.rm=TRUE), countrySpecificData$currency_symbol) ,'</span> on the purchase of a new Battery Electric Vehicle (BEV)!','</b></p>')
                 rebate_federal_text <- paste0('<p style="font-size:14px;"><b>','Federal Rebate: </b>',country_wide_rebate_text, federal_msrp_text,'</p>')
                 rebate_region_text <- paste0('<p style="font-size:14px;"><b>',generalModelData$region,' Rebate: </b>',region_rebate_text, region_msrp_text,'</p><br>')
             } else {
@@ -328,31 +368,44 @@ server <- function(input, output, session) {
 
     output$car_table <- renderDataTable({
     	car_list <- dataTables$car_data
+
+
     	car_list <- car_list[,-which(colnames(car_list)=="Link")]
 
+        ########## Calculate price after delivery fees and tax (if not included in MSRP)
     	car_list$delivery_fees <- sapply(car_list$Make, function(x){dataTables$delivery_fees[x,1]})
     	car_list$delivery_fees[is.na(car_list$delivery_fees)] <- 0
-    	car_list$after_tax_fees <- round((car_list[,"MSRP"] + car_list$delivery_fees) * (generalModelData$tax) ,2)
 
-    	car_list$vehicle_country_wide_rebate <- ifelse(car_list[,"MSRP"]<=generalModelData$country_wide_max_msrp & car_list$Engine=="BEV", generalModelData$country_wide_rebate ,0)
-    	car_list$vehicle_region_rebate <- ifelse(car_list[,"MSRP"]<=generalModelData$region_max_msrp & car_list$Engine=="BEV", generalModelData$region_rebate ,0)
-    	car_list$after_rebates <- round(car_list$after_tax_fees - car_list$vehicle_country_wide_rebate - car_list$vehicle_region_rebate,2)
+        if(!countrySpecificData$tax_included){
+    	   car_list$after_tax_and_fees <- round((car_list[,"MSRP"] + car_list$delivery_fees) * (1+generalModelData$tax) ,2)
+        } else {
+            car_list$after_tax_and_fees <- round((car_list[,"MSRP"] + car_list$delivery_fees),2)
+        }
 
+        ########## Calculate price after rebate
+   
+        vehicle_country_wide_rebate <- ifelse(car_list[,"MSRP"]<=generalModelData$country_wide_max_msrp & car_list$Engine=="BEV", generalModelData$country_wide_rebate ,0)
+        if(countrySpecificData$is_federation){
+            vehicle_region_rebate <- ifelse(car_list[,"MSRP"]<=generalModelData$region_max_msrp & car_list$Engine=="BEV", generalModelData$region_rebate ,0)
+        } else {
+            vehicle_region_rebate <- rep(0, nrow(car_list))
+        }
 
-    	if(is.null(input$region) | identical(input$region,'')){
-    	  car_list$after_tax_fees <- car_list$after_rebates<- "-"
-    	}
+        car_list$eligible_rebate <- vehicle_country_wide_rebate + vehicle_region_rebate
+        car_list$after_rebates <- round(car_list$after_tax_and_fees - car_list$eligible_rebate,2)
 
+        # rename columns
         msrp_colname <- paste0("MSRP (", countrySpecificData$currency_name,")")
         purchase_price_colname <- paste0("Purchase Price (", countrySpecificData$currency_name,")")
-        region_rebate_colname <- paste0(generalModelData$region," rebate")
+        # region_rebate_colname <- paste0(generalModelData$region," rebate")
         range_colname <- paste0("Range (",countrySpecificData$distance,")")
-    	colnames(car_list) <- c("Make", "Model", "Trim", "Engine", msrp_colname, "Traction", range_colname, "AC Charging rate (kw)", "DC Fast Charging rate (kW)", "HP", "Delivery Fees", "Price after Tax & Fees", "Federal Rebate", paste0(generalModelData$region," rebate"), purchase_price_colname)
-        car_list <- car_list[,c("Make", "Model", "Trim", "Engine", msrp_colname,  "Delivery Fees", "Price after Tax & Fees", "Federal Rebate", region_rebate_colname, purchase_price_colname, "Traction", range_colname, "AC Charging rate (kw)", "DC Fast Charging rate (kW)", "HP")] #reorder columns
+    	colnames(car_list) <- c("Make", "Model", "Trim", "Engine", msrp_colname, "Traction", range_colname, "AC Charging rate (kw)", "DC Fast Charging rate (kW)", "HP", "Delivery Fees", "Price after Tax & Fees", "Eligible rebate", purchase_price_colname)
+        # reorder table
+        car_list <- car_list[,c("Make", "Model", "Trim", "Engine", msrp_colname,  "Delivery Fees", "Price after Tax & Fees", "Eligible rebate", purchase_price_colname, "Traction", range_colname, "AC Charging rate (kw)", "DC Fast Charging rate (kW)", "HP")] 
         car_list <- car_list[order(car_list[,purchase_price_colname],decreasing = FALSE),]
-        hide_columns <- which(colnames(car_list) %in% c("Delivery Fees", "Price after Tax & Fees", "Federal Rebate", region_rebate_colname, "Traction", "AC Charging rate (kw)")) - 1 #columns hidden by default, 0-based
+        hide_columns <- 1 #which(colnames(car_list) %in% c("Delivery Fees", "Price after Tax & Fees", "Eligible rebate" "Traction", "AC Charging rate (kw)")) - 1 #columns hidden by default, 0-based
 
-        #create factors for better filtering
+        #create factors for better filtering options
         col_names_to_convert <- c("Make", "Engine", "Traction")
         car_list[col_names_to_convert] <- lapply(car_list[col_names_to_convert] , factor)
 
@@ -368,8 +421,7 @@ server <- function(input, output, session) {
                 th(msrp_colname, title = "Manufacturer's Suggested Retail Price"),
                 th('Delivery Fees', title = 'Addtional delivery fees - manufacturer specific'),
                 th('Price after Tax & Fees', title = 'Price accounting for delivery fees and tax'),
-                th('Federal Rebate', title = 'Federal rebate if applicable'),
-                th(region_rebate_colname, title = 'Regional rebate if applicable'),
+                th('Eligible Rebate', title = 'Combined amount of all eligible rebates'),
                 th(purchase_price_colname, title = 'Final price after rebates'),
                 th('Traction', title = 'Car drivetrain'),
                 th(range_colname, title = 'Distance on a full charge'),
@@ -381,9 +433,9 @@ server <- function(input, output, session) {
         ))
 
     	datatable(car_list, selection = 'single', rownames=FALSE, extensions = 'Buttons', filter="top", container = mouseover_info,
-            options = list(pageLength = 20, lengthMenu = c(10, 20, 50, 100), dom = 'Bfrtlip', buttons = I('colvis'), columnDefs = list(list(targets = hide_columns, visible = FALSE)))) %>% 
-                formatStyle(msrp_colname, background = styleColorBar(car_list[,msrp_colname], rgb(0,0.8,0,0.3)),  backgroundSize = '98% 88%',   backgroundRepeat = 'no-repeat',  backgroundPosition = 'left')  %>% 
-                formatStyle(purchase_price_colname, background = styleColorBar(car_list[,purchase_price_colname], rgb(0,0.8,0,0.3)),  backgroundSize = '98% 88%',   backgroundRepeat = 'no-repeat',  backgroundPosition = 'left')
+             options = list(pageLength = 20, lengthMenu = c(10, 20, 50, 100), dom = 'Bfrtlip', buttons = I('colvis'), columnDefs = list(list(targets = hide_columns, visible = FALSE)))) %>% 
+                 formatStyle(msrp_colname, background = styleColorBar(car_list[,msrp_colname], rgb(0,0.8,0,0.3)),  backgroundSize = '98% 88%',   backgroundRepeat = 'no-repeat',  backgroundPosition = 'left') %>% 
+                 formatStyle(purchase_price_colname, background = styleColorBar(car_list[,purchase_price_colname], rgb(0,0.8,0,0.3)),  backgroundSize = '98% 88%',   backgroundRepeat = 'no-repeat',  backgroundPosition = 'left')
 
     	
     })
@@ -485,7 +537,7 @@ server <- function(input, output, session) {
                 rebates <- 0
             }
             delivery_fees <- dataTables$delivery_fees[input$make1,"Amount"]
-            purchase_price <- round((msrp + delivery_fees) * generalModelData$tax - rebates,2)
+            purchase_price <- round((msrp + delivery_fees) * (1+generalModelData$tax) - rebates,2)
             efficiency <- ifelse(engine=="BEV", generalModelData$bev_efficiency, generalModelData$ice_efficiency)
             fuel_rate <- ifelse(engine=="BEV", generalModelData$electricity_rate, generalModelData$gas_rate)
             fuel_increase <- ifelse(engine=="BEV", generalModelData$electricity_increase, generalModelData$gas_increase) 
@@ -507,7 +559,7 @@ server <- function(input, output, session) {
                 rebates <- 0
             }
             delivery_fees <- dataTables$delivery_fees[input$make2,"Amount"]
-            purchase_price <- round((msrp + delivery_fees) * generalModelData$tax - rebates,2)
+            purchase_price <- round((msrp + delivery_fees) * (1+generalModelData$tax) - rebates,2)
             efficiency <- ifelse(engine=="BEV", generalModelData$bev_efficiency, generalModelData$ice_efficiency)
             fuel_rate <- ifelse(engine=="BEV", generalModelData$electricity_rate, generalModelData$gas_rate)
             fuel_increase <- ifelse(engine=="BEV", generalModelData$electricity_increase, generalModelData$gas_increase) 
@@ -529,7 +581,7 @@ server <- function(input, output, session) {
                 rebates <- 0
             }
             delivery_fees <- dataTables$delivery_fees[input$make3,"Amount"]
-            purchase_price <- round((msrp + delivery_fees) * generalModelData$tax - rebates,2)
+            purchase_price <- round((msrp + delivery_fees) * (1+generalModelData$tax) - rebates,2)
             efficiency <- ifelse(engine=="BEV", generalModelData$bev_efficiency, generalModelData$ice_efficiency)
             fuel_rate <- ifelse(engine=="BEV", generalModelData$electricity_rate, generalModelData$gas_rate)
             fuel_increase <- ifelse(engine=="BEV", generalModelData$electricity_increase, generalModelData$gas_increase) 
@@ -551,7 +603,7 @@ server <- function(input, output, session) {
                 rebates <- 0
             }
             delivery_fees <- dataTables$delivery_fees[input$make4,"Amount"]
-            purchase_price <- round((msrp + delivery_fees) * generalModelData$tax - rebates,2)   
+            purchase_price <- round((msrp + delivery_fees) * (1+generalModelData$tax) - rebates,2)   
             efficiency <- ifelse(engine=="BEV", generalModelData$bev_efficiency, generalModelData$ice_efficiency)
             fuel_rate <- ifelse(engine=="BEV", generalModelData$electricity_rate, generalModelData$gas_rate)
             fuel_increase <- ifelse(engine=="BEV", generalModelData$electricity_increase, generalModelData$gas_increase) 
@@ -573,7 +625,7 @@ server <- function(input, output, session) {
                 rebates <- 0
             }
             delivery_fees <- dataTables$delivery_fees[input$make5,"Amount"]
-            purchase_price <- round((msrp + delivery_fees) * generalModelData$tax - rebates,2)
+            purchase_price <- round((msrp + delivery_fees) * (1+generalModelData$tax) - rebates,2)
             efficiency <- ifelse(engine=="BEV", generalModelData$bev_efficiency, generalModelData$ice_efficiency)
             fuel_rate <- ifelse(engine=="BEV", generalModelData$electricity_rate, generalModelData$gas_rate)
             fuel_increase <- ifelse(engine=="BEV", generalModelData$electricity_increase, generalModelData$gas_increase) 

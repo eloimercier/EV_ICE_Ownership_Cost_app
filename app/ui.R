@@ -68,12 +68,12 @@ tabItem(tabName = "compare",
         #Car selection UI
             column(12, 
                 fluidRow(
-                    column(2,uiOutput("CarSelection0UI")), #, DTOutput("RownamesCarCostTable")),
-                    column(2,uiOutput("CarMake1UI"), uiOutput("CarModel1UI"), uiOutput("CarTrim1UI")), #, DTOutput("CarCostTable1")),
-                    column(2,uiOutput("CarMake2UI"), uiOutput("CarModel2UI"), uiOutput("CarTrim2UI")), #, DTOutput("CarCostTable2")),
-                    column(2,uiOutput("CarMake3UI"), uiOutput("CarModel3UI"), uiOutput("CarTrim3UI")), #, DTOutput("CarCostTable3")),
-                    column(2,uiOutput("CarMake4UI"), uiOutput("CarModel4UI"), uiOutput("CarTrim4UI")), #, DTOutput("CarCostTable4")),
-                    column(2,uiOutput("CarMake5UI"), uiOutput("CarModel5UI"), uiOutput("CarTrim5UI")) #, DTOutput("CarCostTable5"))
+                    column(2,uiOutput("CarSelection0UI")), # rownames
+                    column(2,uiOutput("CarMake1UI"), uiOutput("CarModel1UI"), uiOutput("CarTrim1UI")), 
+                    column(2,uiOutput("CarMake2UI"), uiOutput("CarModel2UI"), uiOutput("CarTrim2UI")), 
+                    column(2,uiOutput("CarMake3UI"), uiOutput("CarModel3UI"), uiOutput("CarTrim3UI")), 
+                    column(2,uiOutput("CarMake4UI"), uiOutput("CarModel4UI"), uiOutput("CarTrim4UI")), 
+                    column(2,uiOutput("CarMake5UI"), uiOutput("CarModel5UI"), uiOutput("CarTrim5UI")) 
                 )
             ),
 
