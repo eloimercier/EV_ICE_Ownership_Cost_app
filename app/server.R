@@ -17,13 +17,13 @@ server <- function(input, output, session) {
     countryInfo <- list(
         USA = list(names_for_regions="State", is_federation=TRUE, tax_included=FALSE,
                 currency_name="USD", currency_symbol="$", currency_symbol_cent="¢", distance="kms",
-                gas_efficiency="mpg", gas_rate="¢/L",   electricity_efficiency="m/kWh", electricity_rate="¢/kW"),
+                gas_efficiency="mpg", gas_rate="¢/L", electricity_efficiency="m/kWh", electricity_rate="¢/kW", ice_maintenance=250, bev_maintenance=100),
         Canada = list(names_for_regions="Province/Territory", is_federation=TRUE, tax_included=FALSE,
                 currency_name="CAD", currency_symbol="$", currency_symbol_cent="¢", distance="kms",
-                gas_efficiency="L/100kms", gas_rate="¢/L",   electricity_efficiency="kWh/100kms", electricity_rate="¢/kW"),
-        France = list(names_for_regions=NA, is_federation=FALSE, tax_included=TRUE,
-                currency_name="Euro", currency_symbol="€", currency_symbol_cent="Cent", distance="kms",
-                gas_efficiency="L/100kms", gas_rate="€/L",   electricity_efficiency="kWh/100kms", electricity_rate="€/kW")
+                gas_efficiency="L/100kms", gas_rate="¢/L", electricity_efficiency="kWh/100kms", electricity_rate="¢/kW", ice_maintenance=350, bev_maintenance=150),
+        France = list(names_for_regions="Region", is_federation=FALSE, tax_included=TRUE,
+                currency_name="Euro", currency_symbol="€", currency_symbol_cent=" cent", distance="kms",
+                gas_efficiency="L/100kms", gas_rate="€/L", electricity_efficiency="kWh/100kms", electricity_rate="€/kW", ice_maintenance=250, bev_maintenance=100)
     )
 
     countrySpecificData <- reactiveValues(names_for_regions=NA, is_federation=NA, tax_included=NA,
@@ -32,7 +32,7 @@ server <- function(input, output, session) {
                                         region_list=NA )
     generalModelData <- reactiveValues(country=NA,  region=NA, rebate_condition=NA,
                                         country_wide_rebate=NA, country_wide_max_msrp=NA, region_rebate=NA, region_max_msrp=NA, tax=NA, gas_rate=NA, electricity_rate=NA, #region specific
-                                        ice_efficiency=8, ice_maintenance=350, bev_efficiency=15, bev_maintenance=150, depreciation_rate=13, depreciation_value_10year=25, gas_increase=5, electricity_increase=1) #fixed
+                                        ice_efficiency=8, ice_maintenance=NA, bev_efficiency=15, bev_maintenance=NA, depreciation_rate=13, depreciation_value_10year=25, gas_increase=5, electricity_increase=1) #fixed
 
     dataTables <- reactiveValues(car_data=data.frame(), rebates=NA, taxes=NA, gas=NA, electricity=NA, fees=NA)
 
@@ -157,6 +157,8 @@ server <- function(input, output, session) {
                 var <- names(country_info)[i]
                 countrySpecificData[[var]] <- country_info[[var]]
             }
+            generalModelData$ice_maintenance <- country_info$ice_maintenance
+            generalModelData$bev_maintenance <- country_info$bev_maintenance
 
             #read specific spreadsheet
             country_file <- paste0("data/EV_list_",input$country,".xlsx")
@@ -186,8 +188,8 @@ server <- function(input, output, session) {
 
             #set country wide rebate
             tax_table <- dataTables$taxes
-
             rebates_table <- dataTables$rebates
+
             if(identical(countrySpecificData$is_federation, TRUE)){
                 generalModelData$country_wide_rebate <- as.numeric(rebates_table[rebates_table[,"Region"] == "Federal", "Maximum.amount"])
                 country_wide_max_msrp <- as.numeric(rebates_table[rebates_table[,"Region"] == "Federal", "If.MSRP.below..."])
@@ -1047,6 +1049,7 @@ server <- function(input, output, session) {
     #### REBATES #### 
     output$rebate_table <- renderDT({
         rebate_table <- dataTables$rebates
+        validate(need(!all(is.na(rebate_table)), "Select a country first!"))
         rebate_table <- rebate_table[-grep("Source", rebate_table$Region),,drop=FALSE]
         colnames(rebate_table) <- c(countrySpecificData$names_for_regions, paste0("Maximum Amount (",countrySpecificData$currency_name,")"), "If MSRP below...", "Condition")
         rebate_table
@@ -1054,13 +1057,16 @@ server <- function(input, output, session) {
 
     output$rebate_source <- renderUI({
         rebate_table <- dataTables$rebates
-        rebate_source <- rebate_table[grep("Source", rebate_table$Region),,drop=FALSE]
-        HTML(paste0('<b>', '<a href=',rebate_source[,2],'>',rebate_source[,1],'</a>','</b>'))
+        if (!all(is.na(rebate_table))){
+            rebate_source <- rebate_table[grep("Source", rebate_table$Region),,drop=FALSE]
+            HTML(paste0('<b>', '<a href=',rebate_source[,2],'>',rebate_source[,1],'</a>','</b>'))
+        }
     })
 
     #### TAXES #### 
     output$tax_table <- renderDT({
         tax_table <- dataTables$taxes
+        validate(need(!all(is.na(tax_table)), "Select a country first!"))
         tax_table <- tax_table[-grep("Source", rownames(tax_table)),,drop=FALSE]
         tax_table$Region <- rownames(tax_table)
         tax_table$Rate <- paste0(as.numeric(tax_table$Rate) * 100, "%")
@@ -1070,13 +1076,16 @@ server <- function(input, output, session) {
 
     output$tax_source <- renderUI({
         tax_table <- dataTables$taxes
-        tax_source <- tax_table[grep("Source", rownames(tax_table)),,drop=FALSE]
-        HTML(paste0('<b>', '<a href=',tax_source[,1],'>',rownames(tax_source),'</a>','</b>'))
+        if (!all(is.na(tax_table))){
+            tax_source <- tax_table[grep("Source", rownames(tax_table)),,drop=FALSE]
+            HTML(paste0('<b>', '<a href=',tax_source[,1],'>',rownames(tax_source),'</a>','</b>'))
+        }
     })
 
     #### GAS #### 
     output$gas_table <- renderDT({
         gas_table <- dataTables$gas
+        validate(need(!all(is.na(gas_table)), "Select a country first!"))
         gas_table <- gas_table[-grep("Source", rownames(gas_table)),,drop=FALSE]
         gas_table$Region <- rownames(gas_table)
         colnames(gas_table) <- c(paste0(countrySpecificData$gas_rate," (",countrySpecificData$currency_name,")"), countrySpecificData$names_for_regions)
@@ -1085,13 +1094,16 @@ server <- function(input, output, session) {
 
     output$gas_source <- renderUI({
         gas_table <- dataTables$gas
-        gas_source <- gas_table[grep("Source", rownames(gas_table)),,drop=FALSE]
-        HTML(paste0('<b>', '<a href=',gas_source[,1],'>',rownames(gas_source),'</a>','</b>'))
+        if (!all(is.na(gas_table))){
+            gas_source <- gas_table[grep("Source", rownames(gas_table)),,drop=FALSE]
+            HTML(paste0('<b>', '<a href=',gas_source[,1],'>',rownames(gas_source),'</a>','</b>'))
+        }
     })
 
     #### ELECTRICITY #### 
     output$electricity_table <- renderDT({
         electricity_table <- dataTables$electricity
+        validate(need(!all(is.na(electricity_table)), "Select a country first!"))
         electricity_table <- electricity_table[-grep("Source", rownames(electricity_table)),,drop=FALSE]
         electricity_table$Region <- rownames(electricity_table)
         colnames(electricity_table) <- c(paste0(countrySpecificData$electricity_rate, " (",countrySpecificData$currency_name,")"), countrySpecificData$names_for_regions)
@@ -1100,13 +1112,16 @@ server <- function(input, output, session) {
 
     output$electricity_source <- renderUI({
         electricity_table <- dataTables$electricity
-        electricity_source <- electricity_table[grep("Source", rownames(electricity_table)),,drop=FALSE]
-        HTML(paste0('<b>', '<a href=',electricity_source[,1],'>',rownames(electricity_source),'</a>','</b>'))
+        if (!all(is.na(electricity_table))){
+            electricity_source <- electricity_table[grep("Source", rownames(electricity_table)),,drop=FALSE]
+            HTML(paste0('<b>', '<a href=',electricity_source[,1],'>',rownames(electricity_source),'</a>','</b>'))
+        }
     })
 
     #### DELIVERY FEES #### 
     output$delivery_fees_table <- renderDT({
         delivery_fees_table <- dataTables$delivery_fees
+        validate(need(!all(is.na(delivery_fees_table)), "Select a country first!"))
         delivery_fees_table$Region <- rownames(delivery_fees_table)
         colnames(delivery_fees_table) <- c(paste0("Amount (",countrySpecificData$currency_name,")"),countrySpecificData$names_for_regions)
         delivery_fees_table[,2:1]
@@ -1114,11 +1129,13 @@ server <- function(input, output, session) {
 
     #### DEFAULT MODEL VARIABLES #### 
     output$default_model_variable_table <- renderDT({
+        validate(need(!is.na(countrySpecificData$currency_symbol), "Select a country first!"))
+
       default_variables <- c(
             "ICE efficiency"=paste(generalModelData$ice_efficiency, countrySpecificData$gas_efficiency),
-            "ICE maintenance (yearly)"=paste0(countrySpecificData$currency_symbol, generalModelData$ice_maintenance), 
+            "ICE maintenance (yearly)"=paste0(generalModelData$ice_maintenance, countrySpecificData$currency_symbol), 
             "BEV efficiency"=paste(generalModelData$bev_efficiency, countrySpecificData$electricity_efficiency),
-            "BEV maintenance (yearly)"=paste0(countrySpecificData$currency_symbol, generalModelData$bev_maintenance), 
+            "BEV maintenance (yearly)"=paste0(generalModelData$bev_maintenance, countrySpecificData$currency_symbol), 
             "Gas price increase (yearly)"=paste0(generalModelData$gas_increase, countrySpecificData$currency_symbol_cent),
             "Electricity price increase (yearly)"=paste0(generalModelData$electricity_increase, countrySpecificData$currency_symbol_cent),
             "Depreciation rate (yearly)"=paste0(generalModelData$depreciation_rate, "%"), 
