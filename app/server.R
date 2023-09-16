@@ -432,7 +432,7 @@ server <- function(input, output, session) {
           )
         ))
 
-    	datatable(car_list, selection = 'single', rownames=FALSE, extensions = 'Buttons', filter="top", container = mouseover_info,
+    	DT::datatable(car_list, filter = list(position = 'top'),selection = 'single', rownames=FALSE, extensions = 'Buttons', container = mouseover_info, 
              options = list(pageLength = 20, lengthMenu = c(10, 20, 50, 100), dom = 'Bfrtlip', buttons = I('colvis'), columnDefs = list(list(targets = hide_columns, visible = FALSE)))) %>% 
                  formatStyle(msrp_colname, background = styleColorBar(car_list[,msrp_colname], rgb(0,0.8,0,0.3)),  backgroundSize = '98% 88%',   backgroundRepeat = 'no-repeat',  backgroundPosition = 'left') %>% 
                  formatStyle(purchase_price_colname, background = styleColorBar(car_list[,purchase_price_colname], rgb(0,0.8,0,0.3)),  backgroundSize = '98% 88%',   backgroundRepeat = 'no-repeat',  backgroundPosition = 'left')	
@@ -446,87 +446,86 @@ server <- function(input, output, session) {
     #### CAR SELECTION UI #### 
 
     output$CarSelection0UI <- renderUI({
-        HTML(paste0('<br><b>Make </b>','<br><br><br><br>',
-              '<b>Model </b>','<br><br><br><br>',
-              '<b>Trim </b>','<br><br>'
+        HTML(paste0('<br><b>Make </b>','<br><p style="height: 40px"></p>',
+                    '<b>Model </b>','<br><p style="height: 40px"></p>',
+                    '<b>Trim </b>','<br><br>'
         ))
     })
 
     #Car1
     output$CarMake1UI <- renderUI({
         makers <- sort(unique(dataTables$car_data$Make))
-        selectizeInput('make1', '', choices = c(Choose='',makers))
+        selectInput('make1', '', choices = c(Choose='',makers))
     })
     output$CarModel1UI <- renderUI({
         maker_models <- unique(dataTables$car_data[dataTables$car_data$Make==input$make1,"Model"])
-        selectizeInput('model1', '', choices = maker_models)
+        pickerInput('model1', '', choices = maker_models)
     })
     output$CarTrim1UI <- renderUI({
         maker_model_trims <- dataTables$car_data[dataTables$car_data$Make==input$make1 & dataTables$car_data$Model==input$model1,"Trim"]
-        selectizeInput('trim1', '', choices = maker_model_trims)
+        pickerInput('trim1', '', choices = maker_model_trims)
     })
 
     #Car2
     output$CarMake2UI <- renderUI({
         makers <- sort(unique(dataTables$car_data$Make))
-        selectizeInput('make2', '', choices = c(Choose='',makers))
+        pickerInput('make2', '', choices = c(Choose='',makers))
     })
     output$CarModel2UI <- renderUI({
         maker_models <- unique(dataTables$car_data[dataTables$car_data$Make==input$make2,"Model"])
-        selectizeInput('model2', '', choices = maker_models)
+        pickerInput('model2', '', choices = maker_models)
     })
     output$CarTrim2UI <- renderUI({
         maker_model_trims <- dataTables$car_data[dataTables$car_data$Make==input$make2 & dataTables$car_data$Model==input$model2,"Trim"]
-        selectizeInput('trim2', '', choices = maker_model_trims)
+        pickerInput('trim2', '', choices = maker_model_trims)
     })
 
     #Car 3
     output$CarMake3UI <- renderUI({
         makers <- sort(unique(dataTables$car_data$Make))
-        selectizeInput('make3', '', choices = c(Choose='',makers))
+        pickerInput('make3', '', choices = c(Choose='',makers))
     })
     output$CarModel3UI <- renderUI({
         maker_models <- unique(dataTables$car_data[dataTables$car_data$Make==input$make3,"Model"])
-        selectizeInput('model3', '', choices = maker_models)
+        pickerInput('model3', '', choices = maker_models)
     })
     output$CarTrim3UI <- renderUI({
         maker_model_trims <- dataTables$car_data[dataTables$car_data$Make==input$make3 & dataTables$car_data$Model==input$model3,"Trim"]
-        selectizeInput('trim3', '', choices = maker_model_trims)
+        pickerInput('trim3', '', choices = maker_model_trims)
     })
 
     #Car 4
     output$CarMake4UI <- renderUI({
         makers <- sort(unique(dataTables$car_data$Make))
-        selectizeInput('make4', '', choices = c(Choose='',makers))
+        pickerInput('make4', '', choices = c(Choose='',makers))
     })
     output$CarModel4UI <- renderUI({
         maker_models <- unique(dataTables$car_data[dataTables$car_data$Make==input$make4,"Model"])
-        selectizeInput('model4', '', choices = maker_models)
+        pickerInput('model4', '', choices = maker_models)
     })
     output$CarTrim4UI <- renderUI({
         maker_model_trims <- dataTables$car_data[dataTables$car_data$Make==input$make4 & dataTables$car_data$Model==input$model4,"Trim"]
-        selectizeInput('trim4', '', choices = maker_model_trims)
+        pickerInput('trim4', '', choices = maker_model_trims)
     })
 
     #Car 5
     output$CarMake5UI <- renderUI({
         makers <- sort(unique(dataTables$car_data$Make))
-        selectizeInput('make5', '', choices = c(Choose='',makers))
+        pickerInput('make5', '', choices = c(Choose='',makers))
     })
     output$CarModel5UI <- renderUI({
         maker_models <- unique(dataTables$car_data[dataTables$car_data$Make==input$make5,"Model"])
-        selectizeInput('model5', '', choices = maker_models)
+        pickerInput('model5', '', choices = maker_models)
     })
     output$CarTrim5UI <- renderUI({
         maker_model_trims <- dataTables$car_data[dataTables$car_data$Make==input$make5 & dataTables$car_data$Model==input$model5,"Trim"]
-        selectizeInput('trim5', '', choices = maker_model_trims)
+        pickerInput('trim5', '', choices = maker_model_trims)
     })
 
 #### UPDATE SELECTION #### 
 
     observeEvent(c(input$country, input$yearly_kms, input$make1, input$model1, input$trim1),{
         if(!is.null(input$country) & !is.null(input$trim1) & !identical(input$trim1,"")){
-print("Setting for Car1")            
             car_long_name <- paste(input$make1, input$model1, input$trim1)
             engine <- dataTables$car_data[car_long_name,"Engine"]
             msrp <- dataTables$car_data[car_long_name,"MSRP"]
@@ -645,7 +644,6 @@ print("Setting for Car1")
 
     observe({
         if(!is.null(input$yearly_kms)){
-print(carSelection$car1$yearly_kms)
             #prepares the model variable table
             c0 <-c( paste0("Purchase Price (",countrySpecificData$currency_name,")"), 
                 paste0(countrySpecificData$distance," driven (yearly)"), 
@@ -669,7 +667,7 @@ print(carSelection$car1$yearly_kms)
 
     output$CarSelectedVariableTable <- renderDataTable({
         car_selected_table <- modelVariableTable$df
-        if(!is.null(input$trim1)){ #prevent generation of the table before cars have been selected - e.g. whem running walkthrough
+        if(!all(is.na(car_selected_table[1,-1]))){ #prevent generation of the table before cars have been selected - e.g. whem running walkthrough
             not_editable_cols <- which(sapply(c(input$trim1,input$trim2, input$trim3, input$trim4, input$trim5), function(x){identical(x,"")}, USE.NAMES=F)) #columns without a selection should not be editable
             car_selected_table$Tips <- c("Purchase price after accounting for MSRP, delivery fees, taxes and rebates", "The distance you drive in a year", "The car efficiency i.e. how much electricity or gas it uses", "Cost of electricty or gas in your area", "An estimation of the yearly electricity or gas increase", "Estimated yearly maintenance cost", "% of MSRP remaining at the end of the period")
             datatable(car_selected_table, colnames = rep("", ncol(car_selected_table)), rownames=FALSE,
