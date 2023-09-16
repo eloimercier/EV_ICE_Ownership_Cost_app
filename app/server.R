@@ -230,10 +230,6 @@ server <- function(input, output, session) {
         }
     })
 
-    # observeEvent(input$region,{
-    #     generalModelData$region <- input$region #set region if specified
-    # })
-
     output$user_region_specificUI <- renderUI({
         if(!is.null(input$region) & !identical(input$region,"")){
             conditions <-  dataTables$rebates[dataTables$rebates[,"Region"]==input$region,"Condition"]
@@ -407,7 +403,7 @@ server <- function(input, output, session) {
         # reorder table
         car_list <- car_list[,c("Make", "Model", "Trim", "Engine", msrp_colname,  "Delivery Fees", "Price after Tax & Fees", "Eligible rebate", purchase_price_colname, "Traction", range_colname, "AC Charging rate (kw)", "DC Fast Charging rate (kW)", "HP")] 
         car_list <- car_list[order(car_list[,purchase_price_colname],decreasing = FALSE),]
-        hide_columns <- 1 #which(colnames(car_list) %in% c("Delivery Fees", "Price after Tax & Fees", "Eligible rebate" "Traction", "AC Charging rate (kw)")) - 1 #columns hidden by default, 0-based
+        hide_columns <- which(colnames(car_list) %in% c("Delivery Fees", "Price after Tax & Fees", "Eligible rebate", "Traction", "AC Charging rate (kw)")) - 1 #columns hidden by default, 0-based
 
         #create factors for better filtering options
         col_names_to_convert <- c("Make", "Engine", "Traction")
@@ -528,8 +524,9 @@ server <- function(input, output, session) {
 
 #### UPDATE SELECTION #### 
 
-    observeEvent(c(input$region, input$yearly_kms, input$make1, input$model1, input$trim1),{
-        if(!is.null(input$region) & !is.null(input$trim1) & !identical(input$trim1,"")){
+    observeEvent(c(input$country, input$yearly_kms, input$make1, input$model1, input$trim1),{
+        if(!is.null(input$country) & !is.null(input$trim1) & !identical(input$trim1,"")){
+print("Setting for Car1")            
             car_long_name <- paste(input$make1, input$model1, input$trim1)
             engine <- dataTables$car_data[car_long_name,"Engine"]
             msrp <- dataTables$car_data[car_long_name,"MSRP"]
@@ -550,8 +547,8 @@ server <- function(input, output, session) {
         }
     })
 
-    observeEvent(c(input$region, input$yearly_kms, input$make2, input$model2, input$trim2),{
-        if(!is.null(input$region) & !is.null(input$trim2) & !identical(input$trim2,"")){
+    observeEvent(c(input$country, input$yearly_kms, input$make2, input$model2, input$trim2),{
+        if(!is.null(input$country) & !is.null(input$trim2) & !identical(input$trim2,"")){
             car_long_name <- paste(input$make2, input$model2, input$trim2)
             engine <- dataTables$car_data[car_long_name,"Engine"]
             msrp <- dataTables$car_data[car_long_name,"MSRP"]
@@ -572,8 +569,8 @@ server <- function(input, output, session) {
         }
     })
 
-    observeEvent(c(input$region, input$yearly_kms, input$make3, input$model3, input$trim3),{
-        if(!is.null(input$region) & !is.null(input$trim3) & !identical(input$trim3,"")){
+    observeEvent(c(input$country, input$yearly_kms, input$make3, input$model3, input$trim3),{
+        if(!is.null(input$country) & !is.null(input$trim3) & !identical(input$trim3,"")){
             car_long_name <- paste(input$make3, input$model3, input$trim3)
             engine <- dataTables$car_data[car_long_name,"Engine"]
             msrp <- dataTables$car_data[car_long_name,"MSRP"]
@@ -594,8 +591,8 @@ server <- function(input, output, session) {
         }
     })
 
-    observeEvent(c(input$region, input$yearly_kms, input$make4, input$model4, input$trim4),{
-        if(!is.null(input$region) & !is.null(input$trim4) & !identical(input$trim4,"")){
+    observeEvent(c(input$country, input$yearly_kms, input$make4, input$model4, input$trim4),{
+        if(!is.null(input$country) & !is.null(input$trim4) & !identical(input$trim4,"")){
             car_long_name <- paste(input$make4, input$model4, input$trim4)
             engine <- dataTables$car_data[car_long_name,"Engine"]
             msrp <- dataTables$car_data[car_long_name,"MSRP"]
@@ -616,8 +613,8 @@ server <- function(input, output, session) {
         }
     })
 
-    observeEvent(c(input$region, input$yearly_kms, input$make5, input$model5, input$trim5),{
-        if(!is.null(input$region) & !is.null(input$trim5) & !identical(input$trim5,"")){
+    observeEvent(c(input$country, input$yearly_kms, input$make5, input$model5, input$trim5),{
+        if(!is.null(input$country) & !is.null(input$trim5) & !identical(input$trim5,"")){
             car_long_name <- paste(input$make5, input$model5, input$trim5)
             engine <- dataTables$car_data[car_long_name,"Engine"]
             msrp <- dataTables$car_data[car_long_name,"MSRP"]
@@ -648,6 +645,7 @@ server <- function(input, output, session) {
 
     observe({
         if(!is.null(input$yearly_kms)){
+print(carSelection$car1$yearly_kms)
             #prepares the model variable table
             c0 <-c( paste0("Purchase Price (",countrySpecificData$currency_name,")"), 
                 paste0(countrySpecificData$distance," driven (yearly)"), 
@@ -714,7 +712,7 @@ server <- function(input, output, session) {
                 df[,i] <- compute_ownership_cost(
                     purchase_price=model_variables_table["purchase_price",i], 
                     kms=input$yearly_kms, 
-                    kept_years=seq_len(input$keep_years), 
+                    kept_years=input$keep_years, 
                     fuel_per_100km=model_variables_table["efficiency",i], 
                     fuel_rate=model_variables_table["fuel_rate",i], 
                     fuel_increase=model_variables_table["fuel_price_increase",i], 
@@ -1069,7 +1067,12 @@ server <- function(input, output, session) {
         validate(need(!all(is.na(tax_table)), "Select a country first!"))
         tax_table <- tax_table[-grep("Source", rownames(tax_table)),,drop=FALSE]
         tax_table$Region <- rownames(tax_table)
-        tax_table$Rate <- paste0(as.numeric(tax_table$Rate) * 100, "%")
+
+        if(tax_table$Rate==0){
+            tax_table$Rate <- "Included"
+        } else {
+            tax_table$Rate <- paste0(as.numeric(tax_table$Rate) * 100, "%")
+        }
         colnames(tax_table) <- c("Rate", countrySpecificData$names_for_regions)
         tax_table[,2:1]
     }, selection = 'single', rownames=FALSE, options = list(pageLength = 20, autoWidth = F, dom="t"))

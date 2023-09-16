@@ -64,7 +64,6 @@ ui <- dashboardPage(skin = "green",
 
 tabItem(tabName = "compare",
         fluidRow(
-
         #Car selection UI
             column(12, 
                 fluidRow(

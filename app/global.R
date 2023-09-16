@@ -29,14 +29,15 @@ calculate_depreciation_n_years <- function(depreciation_rate, n_years){
 
 compute_ownership_cost <- function(purchase_price, kms, kept_years, fuel_per_100km, fuel_rate, fuel_increase, maintenance){
 #formula to get cost of ownership over X years
-    fuel_cost <- kms * fuel_per_100km/100 * fuel_rate/100 * kept_years 
-    fuel_increase_cost <- kms * fuel_per_100km/100 * fuel_increase/100 * (kept_years-1)
-    maintenance_cost <- maintenance * kept_years
-    ownership_cost <- purchase_price + fuel_cost + fuel_increase_cost + maintenance_cost
-    ownership_cost <- round(ownership_cost,2)
-    return(ownership_cost)
-}
+	kept_years_vec <- seq_len(kept_years)
+	cumulative_ownership_cost_over_years <- yearly_spending <- rep(NA, kept_years)
 
+	for (i in kept_years_vec){
+		yearly_spending[i] <- maintenance + kms * fuel_per_100km/100 * (fuel_rate/100 + fuel_increase/100 * (i-1)) 
+	}
+	cumulative_ownership_cost_over_years <- purchase_price + cumsum(yearly_spending)
+    return(cumulative_ownership_cost_over_years)
+}
 
 gg_color_hue <- function(n) {
 	#emulate ggplot2 color scheme
