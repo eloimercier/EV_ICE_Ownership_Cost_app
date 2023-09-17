@@ -1,14 +1,14 @@
 
 server <- function(input, output, session) {
 
-  verbose <- TRUE
+  verbose <- FALSE
   
 #TODO:
-  #message in top right corner if no province selected
-  #change Regions to Provinces
   #option to select miles or km, mpg or L/km
-  #better naming scheme
-  
+  #missing car legend
+  #missing purchase price in point plot
+  #add fuel cost and resale value in barplot
+
 ##############################################################
 ########################### SETUP ############################
 ##############################################################
@@ -34,7 +34,7 @@ server <- function(input, output, session) {
                                         country_wide_rebate=NA, country_wide_max_msrp=NA, region_rebate=NA, region_max_msrp=NA, tax=NA, gas_rate=NA, electricity_rate=NA, #region specific
                                         ice_efficiency=8, ice_maintenance=NA, bev_efficiency=15, bev_maintenance=NA, depreciation_rate=13, depreciation_value_10year=25, gas_increase=5, electricity_increase=1) #fixed
 
-    dataTables <- reactiveValues(car_data=data.frame(), rebates=NA, taxes=NA, gas=NA, electricity=NA, fees=NA)
+    dataTables <- reactiveValues(car_data=data.frame(), rebates=NA, taxes=NA, gas=NA, electricity=NA, fees=NA, delivery_fees=NA)
 
     car_ini <- list(name="", MSRP=NA, rebates=NA, purchase_price=NA, engine=NA, efficiency=NA, fuel_rate=NA, fuel_increase=NA, maintenance=NA, yearly_kms=NA, depreciation_x_years=NA)
     carSelection <- reactiveValues(car1=car_ini, car2=car_ini, car3=car_ini, car4=car_ini, car5=car_ini)
@@ -82,6 +82,11 @@ server <- function(input, output, session) {
 
     observe({
         current_step <- walkthrough$getCurrentStep()
+        btn <- input$walkthroughBtn #to force update
+        # print("Current step")
+        # print(current_step)
+        # is_active <- walkthrough$isActive()
+        # print(is_active)
 
         #step options for walkthrough
         if(identical(current_step, "first")){
@@ -90,6 +95,7 @@ server <- function(input, output, session) {
         }
         #reset options at the end
         if (identical(current_step, "clear_walkthrough_options")) { #reset options when we reach end of tour or if tour cancel
+            updateSelectInput(session,"country", selected = "")
             updateSelectInput(session,"region", selected = "")
             updateSelectInput(session,"make1", selected = "")
             updateSelectInput(session,"make2", selected = "")
@@ -101,6 +107,7 @@ server <- function(input, output, session) {
 
         #actions at specific steps
         if(identical(current_step, "comparator.transistion")){
+# print("comparator.transistion")            
             updateTabItems(session, inputId="sidebarID", selected="compare")
             updateSelectInput(session,"make1", selected = "Honda")
             updateSelectInput(session,"make2", selected = "Hyundai")
@@ -212,7 +219,13 @@ server <- function(input, output, session) {
                 generalModelData$electricity_rate <- as.numeric(dataTables$electricity[input$country,1])
                 if(verbose) print(paste0("Tax/Gas/Electricity rates: ", generalModelData$tax, "/", generalModelData$gas_rate, "/", generalModelData$electricity_rate))
             }
-
+        } else {
+            #reset data
+            countrySpecificData$names_for_regions <- countrySpecificData$is_federation <- countrySpecificData$tax_included <- countrySpecificData$currency_name  <- countrySpecificData$currency_symbol <- countrySpecificData$currency_symbol_cent <- NA
+            countrySpecificData$distance <- countrySpecificData$gas_efficiency <- countrySpecificData$gas_rate <- countrySpecificData$electricity_efficiency <- countrySpecificData$electricity_rate <- countrySpecificData$region_list <- NA
+            generalModelData$region <- ""
+            dataTables$car_data=data.frame()
+            dataTables$rebates <- dataTables$taxes <- dataTables$gas <- dataTables$electricity <- dataTables$fees <- dataTables$delivery_fees <- NA
         }
     })
 
@@ -231,7 +244,7 @@ server <- function(input, output, session) {
     })
 
     output$user_region_specificUI <- renderUI({
-        if(!is.null(input$region) & !identical(input$region,"")){
+        if(!is.null(input$region) & !identical(input$region,"") & !identical(generalModelData$region,"")){
             conditions <-  dataTables$rebates[dataTables$rebates[,"Region"]==input$region,"Condition"]
             if(length(conditions)>1){ 
                 selectInput("rebate_condition", "Condition:", as.list(conditions))
@@ -543,6 +556,8 @@ server <- function(input, output, session) {
             depreciation_rate <- calculate_depreciation_rate (generalModelData$depreciation_value_10year, input$keep_years)
             depreciation_x_years <- calculate_depreciation_n_years(depreciation_rate, input$keep_years)
             carSelection$car1 <- list(name=car_long_name, MSRP=msrp, rebates=rebates, purchase_price=purchase_price, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, fuel_increase=fuel_increase, maintenance=maintenance, yearly_kms=input$yearly_kms, depreciation_x_years=depreciation_x_years)
+        } else {
+             carSelection$car1 <- car_ini
         }
     })
 
@@ -565,6 +580,8 @@ server <- function(input, output, session) {
             depreciation_rate <- calculate_depreciation_rate (generalModelData$depreciation_value_10year, input$keep_years)
             depreciation_x_years <- calculate_depreciation_n_years(depreciation_rate, input$keep_years)
             carSelection$car2 <- list(name=car_long_name, MSRP=msrp, rebates=rebates, purchase_price=purchase_price, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, fuel_increase=fuel_increase, maintenance=maintenance, yearly_kms=input$yearly_kms, depreciation_x_years=depreciation_x_years)
+        } else {
+             carSelection$car2 <- car_ini
         }
     })
 
@@ -587,6 +604,8 @@ server <- function(input, output, session) {
             depreciation_rate <- calculate_depreciation_rate (generalModelData$depreciation_value_10year, input$keep_years)
             depreciation_x_years <- calculate_depreciation_n_years(depreciation_rate, input$keep_years)
             carSelection$car3 <- list(name=car_long_name, MSRP=msrp, rebates=rebates, purchase_price=purchase_price, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, fuel_increase=fuel_increase, maintenance=maintenance, yearly_kms=input$yearly_kms, depreciation_x_years=depreciation_x_years)
+        } else {
+             carSelection$car3 <- car_ini
         }
     })
 
@@ -609,6 +628,8 @@ server <- function(input, output, session) {
             depreciation_rate <- calculate_depreciation_rate (generalModelData$depreciation_value_10year, input$keep_years)
             depreciation_x_years <- calculate_depreciation_n_years(depreciation_rate, input$keep_years)
             carSelection$car4 <- list(name=car_long_name, MSRP=msrp, rebates=rebates, purchase_price=purchase_price, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, fuel_increase=fuel_increase, maintenance=maintenance, yearly_kms=input$yearly_kms, depreciation_x_years=depreciation_x_years)
+        } else {
+             carSelection$car4 <- car_ini
         }
     })
 
@@ -631,6 +652,8 @@ server <- function(input, output, session) {
             depreciation_rate <- calculate_depreciation_rate (generalModelData$depreciation_value_10year, input$keep_years)
             depreciation_x_years <- calculate_depreciation_n_years(depreciation_rate, input$keep_years)
             carSelection$car5 <- list(name=car_long_name, MSRP=msrp, rebates=rebates, purchase_price=purchase_price, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, fuel_increase=fuel_increase, maintenance=maintenance, yearly_kms=input$yearly_kms, depreciation_x_years=depreciation_x_years)
+        } else {
+             carSelection$car5 <- car_ini
         }
     })
 
