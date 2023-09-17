@@ -47,7 +47,7 @@ server <- function(input, output, session) {
 ##############################################################
 
     walkthrough <- Conductor$new(
-        exitOnEsc = TRUE,
+        exitOnEsc = FALSE,
         keyboardNavigation = TRUE)$
         step(title="<b>Welcome!</b>", text="Welcome to the Electric Vehicle Comparison Tool!",id = "first")$
         step(title="<b>Enter your info</b>", text="This is where you select your country, region, the distance driven annually and how long you intend to keep the car for.", el="#country", 
@@ -68,7 +68,7 @@ server <- function(input, output, session) {
             id = "comparator.5")$
         step(title="<b>Comparison plot</b>", text="This is a graphical representation of the cost of ownership.", el="#plot",
             id = "compararison_plot.transistion", buttons = list(list(action = "next",text = "Next")))$
-        step(title="<b>Comparison plot</b>", text="Here you can see that the Honda CRV end up beeing more expensive that the Hyundai IONIQ5 after 8 years.", el="#CarComparisonPlot", 
+        step(title="<b>Comparison plot</b>", text="In this scenario, that the Honda CRV ends up being more expensive that the Hyundai IONIQ5 after 7 years despite a lower MSRP.", el="#CarComparisonPlot", 
             id = "compararison_plot.2")$
         step(title="<b>Change your info</b>", text="You can always change the parameters here to see how it affects the model.", 
             id = "clear_walkthrough_options")$
@@ -83,10 +83,6 @@ server <- function(input, output, session) {
     observe({
         current_step <- walkthrough$getCurrentStep()
         btn <- input$walkthroughBtn #to force update
-        # print("Current step")
-        # print(current_step)
-        # is_active <- walkthrough$isActive()
-        # print(is_active)
 
         #step options for walkthrough
         if(identical(current_step, "first")){
@@ -95,19 +91,17 @@ server <- function(input, output, session) {
         }
         #reset options at the end
         if (identical(current_step, "clear_walkthrough_options")) { #reset options when we reach end of tour or if tour cancel
-            updateSelectInput(session,"country", selected = "")
             updateSelectInput(session,"region", selected = "")
             updateSelectInput(session,"make1", selected = "")
             updateSelectInput(session,"make2", selected = "")
             updateCollapse(session, id="model_variable_table_collapsible", open = NULL, close = "model_variable_collapse", style = NULL)
             updateTabItems(session, inputId="sidebarID", selected="user_info")
             updateTabsetPanel(session, inputId="comparison_panels", selected="table")
+            updateSelectInput(session,"country", selected = "")
         }
-
 
         #actions at specific steps
         if(identical(current_step, "comparator.transistion")){
-# print("comparator.transistion")            
             updateTabItems(session, inputId="sidebarID", selected="compare")
             updateSelectInput(session,"make1", selected = "Honda")
             updateSelectInput(session,"make2", selected = "Hyundai")
