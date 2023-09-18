@@ -16,9 +16,9 @@ library(shinyBS)
 library(conductor)
 library(shinyWidgets )
 
-calculate_depreciation_rate <- function(depreciation_n_years, n_years){
+calculate_depreciation_from_10year_rate <- function(depreciation_10_years, n_years=10){
 	#e.g. depreciation after 10 years is 25% of MSRP, yearly depreciation is 0.25^(1/10)=0.87
-	y <- 1 - (depreciation_n_years/100) ^ (1/n_years)
+	y <- 1 - (depreciation_10_years/100) ^ (1/n_years)
 	y * 100 #as a percentage
 }
 
@@ -41,7 +41,15 @@ compute_ownership_cost <- function(purchase_price, kms, kept_years, fuel_per_100
 }
 
 gg_color_hue <- function(n) {
-	#emulate ggplot2 color scheme
+#emulate ggplot2 color scheme
   hues = seq(15, 375, length = n + 1)
   hcl(h = hues, l = 65, c = 100)[1:n]
+}
+
+firstup <- function(x) {
+#Capitalize first letter of a word
+	if(!is.null(x) & !is.na(x)){
+		substr(x, 1, 1) <- toupper(substr(x, 1, 1))
+		x
+	}
 }

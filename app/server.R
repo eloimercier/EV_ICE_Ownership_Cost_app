@@ -541,7 +541,7 @@ server <- function(input, output, session) {
             fuel_rate <- ifelse(engine=="BEV", generalModelData$electricity_rate, generalModelData$gas_rate)
             fuel_increase <- ifelse(engine=="BEV", generalModelData$electricity_increase, generalModelData$gas_increase) 
             maintenance <- ifelse(engine=="BEV", generalModelData$bev_maintenance, generalModelData$ice_maintenance)
-            depreciation_rate <- calculate_depreciation_rate (generalModelData$depreciation_value_10year, input$keep_years)
+            depreciation_rate <- calculate_depreciation_from_10year_rate (generalModelData$depreciation_value_10year)
             depreciation_x_years <- calculate_depreciation_n_years(depreciation_rate, input$keep_years)
             carSelection$car1 <- list(name=car_long_name, MSRP=msrp, rebates=rebates, purchase_price=purchase_price, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, fuel_increase=fuel_increase, maintenance=maintenance, yearly_kms=input$yearly_kms, depreciation_x_years=depreciation_x_years)
         } else {
@@ -565,7 +565,7 @@ server <- function(input, output, session) {
             fuel_rate <- ifelse(engine=="BEV", generalModelData$electricity_rate, generalModelData$gas_rate)
             fuel_increase <- ifelse(engine=="BEV", generalModelData$electricity_increase, generalModelData$gas_increase) 
             maintenance <- ifelse(engine=="BEV", generalModelData$bev_maintenance, generalModelData$ice_maintenance)
-            depreciation_rate <- calculate_depreciation_rate (generalModelData$depreciation_value_10year, input$keep_years)
+            depreciation_rate <- calculate_depreciation_from_10year_rate (generalModelData$depreciation_value_10year)
             depreciation_x_years <- calculate_depreciation_n_years(depreciation_rate, input$keep_years)
             carSelection$car2 <- list(name=car_long_name, MSRP=msrp, rebates=rebates, purchase_price=purchase_price, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, fuel_increase=fuel_increase, maintenance=maintenance, yearly_kms=input$yearly_kms, depreciation_x_years=depreciation_x_years)
         } else {
@@ -589,7 +589,7 @@ server <- function(input, output, session) {
             fuel_rate <- ifelse(engine=="BEV", generalModelData$electricity_rate, generalModelData$gas_rate)
             fuel_increase <- ifelse(engine=="BEV", generalModelData$electricity_increase, generalModelData$gas_increase) 
             maintenance <- ifelse(engine=="BEV", generalModelData$bev_maintenance, generalModelData$ice_maintenance)
-            depreciation_rate <- calculate_depreciation_rate (generalModelData$depreciation_value_10year, input$keep_years)
+            depreciation_rate <- calculate_depreciation_from_10year_rate (generalModelData$depreciation_value_10year)
             depreciation_x_years <- calculate_depreciation_n_years(depreciation_rate, input$keep_years)
             carSelection$car3 <- list(name=car_long_name, MSRP=msrp, rebates=rebates, purchase_price=purchase_price, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, fuel_increase=fuel_increase, maintenance=maintenance, yearly_kms=input$yearly_kms, depreciation_x_years=depreciation_x_years)
         } else {
@@ -613,7 +613,7 @@ server <- function(input, output, session) {
             fuel_rate <- ifelse(engine=="BEV", generalModelData$electricity_rate, generalModelData$gas_rate)
             fuel_increase <- ifelse(engine=="BEV", generalModelData$electricity_increase, generalModelData$gas_increase) 
             maintenance <- ifelse(engine=="BEV", generalModelData$bev_maintenance, generalModelData$ice_maintenance)
-            depreciation_rate <- calculate_depreciation_rate (generalModelData$depreciation_value_10year, input$keep_years)
+            depreciation_rate <- calculate_depreciation_from_10year_rate (generalModelData$depreciation_value_10year)
             depreciation_x_years <- calculate_depreciation_n_years(depreciation_rate, input$keep_years)
             carSelection$car4 <- list(name=car_long_name, MSRP=msrp, rebates=rebates, purchase_price=purchase_price, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, fuel_increase=fuel_increase, maintenance=maintenance, yearly_kms=input$yearly_kms, depreciation_x_years=depreciation_x_years)
         } else {
@@ -637,7 +637,7 @@ server <- function(input, output, session) {
             fuel_rate <- ifelse(engine=="BEV", generalModelData$electricity_rate, generalModelData$gas_rate)
             fuel_increase <- ifelse(engine=="BEV", generalModelData$electricity_increase, generalModelData$gas_increase) 
             maintenance <- ifelse(engine=="BEV", generalModelData$bev_maintenance, generalModelData$ice_maintenance)
-            depreciation_rate <- calculate_depreciation_rate (generalModelData$depreciation_value_10year, input$keep_years)
+            depreciation_rate <- calculate_depreciation_from_10year_rate (generalModelData$depreciation_value_10year)
             depreciation_x_years <- calculate_depreciation_n_years(depreciation_rate, input$keep_years)
             carSelection$car5 <- list(name=car_long_name, MSRP=msrp, rebates=rebates, purchase_price=purchase_price, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, fuel_increase=fuel_increase, maintenance=maintenance, yearly_kms=input$yearly_kms, depreciation_x_years=depreciation_x_years)
         } else {
@@ -657,7 +657,7 @@ server <- function(input, output, session) {
         if(!is.null(input$yearly_kms)){
             #prepares the model variable table
             c0 <-c( paste0("Purchase Price (",countrySpecificData$currency_name,")"), 
-                paste0(countrySpecificData$distance," driven (yearly)"), 
+                paste0(firstup(countrySpecificData$distance)," driven (yearly)"), 
                 paste0("Efficency (",countrySpecificData$gas_efficiency," or ", countrySpecificData$electricity_efficiency,")"), 
                 paste0("Fuel/energy rate (",countrySpecificData$gas_rate," or ", countrySpecificData$electricity_rate,")"), 
                 paste0("Yearly fuel/energy price increase (",countrySpecificData$currency_symbol_cent,")"), 
@@ -1182,7 +1182,7 @@ DFLONG2 <<- df_long2
             "Gas price increase (yearly)"=paste0(generalModelData$gas_increase, countrySpecificData$currency_symbol_cent),
             "Electricity price increase (yearly)"=paste0(generalModelData$electricity_increase, countrySpecificData$currency_symbol_cent),
             "Depreciation rate (yearly)"=paste0(generalModelData$depreciation_rate, "%"), 
-            "Depreciation value at 10 years"=paste0(generalModelData$depreciation_value_10year, "%")) 
+            "Remaining value at 10 years"=paste0(generalModelData$depreciation_value_10year, "%")) 
             #Depreciation at 10 years: 25%
       model_variable_table <- data.frame(Parameters=names(default_variables),
                                          Values=default_variables)
