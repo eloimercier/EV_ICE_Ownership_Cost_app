@@ -235,7 +235,7 @@ server <- function(input, output, session) {
         if(!is.null(input$region) & !identical(input$region,"") & !identical(generalModelData$region,"")){
             conditions <-  dataTables$rebates[dataTables$rebates[,"Region"]==input$region,"Condition"]
             if(length(conditions)>1){ 
-                selectInput("rebate_condition", "Condition:", as.list(conditions))
+                selectInput("rebate_condition", "Income:", as.list(conditions))
             } 
         }
     })
@@ -351,11 +351,11 @@ server <- function(input, output, session) {
     	                              "")
 
             if(countrySpecificData$is_federation){
-                rebate_max_text <- paste0('<p style="font-size:20px;"><b>','You can benefit from up to <span style="background-color: #FFFF00">', paste0(sum(country_wide_rebate, region_rebate, na.rm=TRUE), countrySpecificData$currency_symbol) ,'</span> on the purchase of a new Battery Electric Vehicle (BEV)!','</b></p>')
+                rebate_max_text <- paste0('<p style="font-size:20px;"><b>','You can benefit from up to <span style="background-color: #FFFF00">', paste0(sum(country_wide_rebate, region_rebate, na.rm=TRUE), countrySpecificData$currency_symbol) ,'</span> on the purchase of a new Battery Electric Vehicle (BEV).','</b></p>')
                 rebate_federal_text <- paste0('<p style="font-size:14px;"><b>','Federal Rebate: </b>',country_wide_rebate_text, federal_msrp_text,'</p>')
                 rebate_region_text <- paste0('<p style="font-size:14px;"><b>',generalModelData$region,' Rebate: </b>',region_rebate_text, region_msrp_text,'</p><br>')
             } else {
-                rebate_max_text <- paste0('<p style="font-size:20px;"><b>','You can benefit from up to <span style="background-color: #FFFF00">', paste0(country_wide_rebate, countrySpecificData$currency_symbol) ,'</span> on the purchase of a new Battery Electric Vehicle (BEV)!','</b></p>')
+                rebate_max_text <- paste0('<p style="font-size:20px;"><b>','You can benefit from up to <span style="background-color: #FFFF00">', paste0(country_wide_rebate, countrySpecificData$currency_symbol) ,'</span> on the purchase of a new Battery Electric Vehicle (BEV).','</b></p>')
                  rebate_federal_text <- rebate_region_text <- NULL
             }
 
@@ -1089,7 +1089,7 @@ DFLONG2 <<- df_long2
         rebate_table <- dataTables$rebates
         validate(need(!all(is.na(rebate_table)), "Select a country first!"))
         rebate_table <- rebate_table[-grep("Source", rebate_table$Region),,drop=FALSE]
-        colnames(rebate_table) <- c(countrySpecificData$names_for_regions, paste0("Maximum Amount (",countrySpecificData$currency_name,")"), "If MSRP below...", "Condition")
+        colnames(rebate_table) <- c(countrySpecificData$names_for_regions, paste0("Maximum Amount (",countrySpecificData$currency_name,")"), "If MSRP below...", "Income")
         rebate_table
     }, selection = 'single', rownames=FALSE, options = list(pageLength = 20, autoWidth = F, dom="t"))
 
