@@ -323,9 +323,9 @@ server <- function(input, output, session) {
     output$rebate_info <- renderUI({
     	rebates <- dataTables$rebates
         if(is.null(input$country) | identical(input$country,"")){
-            HTML('<p style="font-size:20px;"><b>Select your country to see how much you can save on the purchase of a new Battery Electric Vehicles (BEV)!</b></p>')
+            HTML('<p style="font-size:20px;"><b>Select your country to see how much you can save on the purchase of a new Battery Electric Vehicles (BEV).</b></p>')
         } else if(( is.null(input$region) | identical(input$region,'') ) & countrySpecificData$is_federation){
-            HTML('<p style="font-size:20px;"><b>Select your ',countrySpecificData$names_for_regions,' to see how much you can save on the purchase of a new Battery Electric Vehicles (BEV)!</b></p>')
+            HTML('<p style="font-size:20px;"><b>Select your ',countrySpecificData$names_for_regions,' to see how much you can save on the purchase of a new Battery Electric Vehicles (BEV).</b></p>')
         } else {
     		country_wide_rebate <- generalModelData$country_wide_rebate
     		federal_msrp <- generalModelData$country_wide_max_msrp
