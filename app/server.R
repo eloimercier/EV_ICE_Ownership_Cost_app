@@ -3,12 +3,6 @@ server <- function(input, output, session) {
 
   verbose <- FALSE
   
-#TODO:
-  #option to select miles or km, mpg or L/km
-  #missing car legend
-  #missing purchase price in point plot
-  #add fuel cost and resale value in barplot
-
 ##############################################################
 ########################### SETUP ############################
 ##############################################################
@@ -23,7 +17,7 @@ server <- function(input, output, session) {
                 gas_efficiency="L/100kms", gas_rate="¢/L", electricity_efficiency="kWh/100kms", electricity_rate="¢/kW", ice_maintenance=350, bev_maintenance=150),
         France = list(names_for_regions="Region", is_federation=FALSE, tax_included=TRUE,
                 currency_name="Euro", currency_symbol="€", currency_symbol_cent=" cent", distance="kms",
-                gas_efficiency="L/100kms", gas_rate="€/L", electricity_efficiency="kWh/100kms", electricity_rate="€/kW", ice_maintenance=250, bev_maintenance=100)
+                gas_efficiency="L/100kms", gas_rate=" cents/L", electricity_efficiency="kWh/100kms", electricity_rate=" cents/kW", ice_maintenance=250, bev_maintenance=100)
     )
 
     countrySpecificData <- reactiveValues(names_for_regions=NA, is_federation=NA, tax_included=NA,
@@ -60,7 +54,7 @@ server <- function(input, output, session) {
             id = "comparator.1")$
         step(title="<b>Default model parameters</b>", text="Default parameters are automatically applied based on the user info.<br><br><i>Note: the default parameters are taken from the tables in the 'Parameters' tab.</i>",el="#CarSelectedVariableTable", 
             id = "comparator.2")$
-        step(title="<b>Costumize model parameters</b>", text="You can fully customize the model if the default values do not match your profile.<br><br><i>Edit the parameters by double-clicking a cell and enter a new value.</i>",el="#CarSelectedVariableTable", 
+        step(title="<b>Customize model parameters</b>", text="You can fully customize the model if the default values do not match your profile.<br><br><i>Edit the parameters by double-clicking a cell and enter a new value.</i>",el="#CarSelectedVariableTable", 
             id = "comparator.3")$
         step(title="<b>Cost of ownership</b>", text="The tool calculates the cost of ownership over the period.<br><br>This is how much you can expect to have spent at the end of the period.", el="#CarComparisonTable", 
             id = "comparator.4")$
@@ -68,7 +62,7 @@ server <- function(input, output, session) {
             id = "comparator.5")$
         step(title="<b>Comparison plot</b>", text="This is a graphical representation of the cost of ownership.", el="#plot",
             id = "compararison_plot.transistion", buttons = list(list(action = "next",text = "Next")))$
-        step(title="<b>Comparison plot</b>", text="In this scenario, that the Honda CRV ends up being more expensive that the Hyundai IONIQ5 after 7 years despite a lower MSRP.", el="#CarComparisonPlot", 
+        step(title="<b>Comparison plot</b>", text="In this scenario, the Honda CRV ends up being more expensive that the Hyundai IONIQ5 after 7 years despite a lower MSRP.", el="#combinedCarPlot", 
             id = "compararison_plot.2")$
         step(title="<b>Change your info</b>", text="You can always change the parameters here to see how it affects the model.", 
             id = "clear_walkthrough_options")$
@@ -769,7 +763,6 @@ server <- function(input, output, session) {
     output$purchasePriceTable <- renderDataTable({
 
         validate(need(!is.null(input$country) & !identical(input$country,""), "Select a country first!"))
-
         purchase_price_table <- modelVariableTable$df["purchase_price",,drop=FALSE]
         purchase_price_table$Tips <- "Purchase price after accounting for MSRP, delivery fees, taxes and rebates"
         colnames(purchase_price_table) <- LETTERS[1:ncol(purchase_price_table)] #placeholder for rowCallback which doesn't accept empty colnames
@@ -804,7 +797,8 @@ server <- function(input, output, session) {
     #Compare cost of car ownership over X year
     output$CarComparisonTable <- renderDataTable({
         if(!is.null(input$country) & !identical(input$country,"")){ #country has been selected
-            car_comparison_table <- comparisonData$cost_over_years  
+            car_comparison_table <- comparisonData$cost_over_years
+            colnames(car_comparison_table)[1] <- "End of Year"
             datatable(car_comparison_table, rownames=FALSE, 
                 selection = list(mode = 'single'),
                 options = list(ordering=FALSE, autoWidth = F, pageLength = 20, dom = 't',
@@ -930,71 +924,98 @@ server <- function(input, output, session) {
 
 #### CAR COMPARISON PLOT #### 
 
-    car_comparison_plot <- reactive({
-        df <- comparisonData$cost_over_years
-        colnames(df) <- make.unique(colnames(df))
-        df$point_type <- "Cost of ownership" #"circle"
-        purchase_price <- df["Purchase Price",,drop=FALSE]
-        purchase_price$point_type <- "Purchase Price" # "triangle"
-        colnames(purchase_price) <- colnames(df)
-        purchase_price[1,"Year"] <- 0
-        df <- rbind(df,purchase_price)
-
-        df_long <- melt(df, id.vars=c("Year", "point_type"), na.rm=TRUE)
-        colnames(df_long) <- c("Year", "point_type", "Model", "Cost")
-        df_long$Cost <- as.numeric(df_long$Cost)
-        df_long$Year <- as.numeric(df_long$Year)
-
-        if(nrow(df_long)>1){
-            p <- ggplot(df_long, aes(x=Year, color=Model, y=Cost, shape=point_type)) + geom_line(lwd=1) + geom_point(size=3) #assign arbitrary alpha, we will define the range later
-            p <- p + scale_y_continuous(limits = c(0, max(df_long$Cost))) + scale_x_continuous(limits = c(0, input$keep_years), breaks = seq(from=0, to=input$keep_years, by=5), minor_breaks = seq(from=0, to=input$keep_years, by=1))
-            p <- p + theme_minimal() + ylab("Ownership Cost") + xlab("Years")
-            p <- p + theme(panel.grid.major.x = element_line(size = 2), panel.grid.minor.x = element_line(color="grey"))
-            # p <- p + scale_alpha_identity() #define the range of the alpa values here
-            p
-        }
-     })
-
-    car_final_cost_plot <- reactive({
-        df <- comparisonData$final_cost[c("Depreciation Cost", "Operational Cost"),]
+    purchase_price_plot <- reactive({
+        df <- comparisonData$final_cost[c("Purchase Price"),,drop=FALSE]
+DF <<- df        
         colnames(df) <- make.unique(colnames(df))
         df_long <- melt(as.matrix(df[,-which(colnames(df)=="Breakdown")]), na.rm=T , varnames="Breakdown")
         colnames(df_long) <- c("Breakdown", "Model", "Cost")
         df_long$Cost <- as.numeric(df_long$Cost)
+        point_cols <- gg_color_hue(length(unique(df_long$Model))); names(point_cols) <- unique(df_long$Model)
 
-        if(nrow(df_long)>1){
-            p <- ggplot(df_long, aes(x=Model, y=Cost, fill=Breakdown)) + geom_bar(stat = "identity", lwd=3)
+        if(nrow(df_long)>0){
+            p <- ggplot(df_long, aes(x=Model, y=Cost, fill=Breakdown, text=paste0(Breakdown,": ", Cost))) + geom_bar(stat = "identity", lwd=3) + geom_point(aes(x=Model, y=Cost, color=Model, fill=Model), stroke=0, size=5)
             max_y <- max(comparisonData$cost_over_years, na.rm=TRUE)  #set ylim the same as other plot
             p <- p + scale_y_continuous(limits = c(0, max_y))
             p <- p + theme_minimal() + ylab("Cost") + xlab(NULL)
             p <- p + theme(panel.grid.major.y = element_line(size = 2), panel.grid.major.x=element_blank(), panel.grid.minor.x=element_blank(),
                 axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
-            p <- p + scale_fill_manual(values=c("Depreciation Cost"="#ff9d4c", "Operational Cost"="#9452a9")) #+ ggtitle("Cost of ownership after resale")
+            p <- p + scale_fill_manual(values=c("Purchase Price"=rgb(0,0.3,0.9,1), point_cols)) 
             p
         }
     })
 
 
-    output$CarComparisonPlot <- renderPlotly({
-        p1 <- car_comparison_plot() 
-        p2 <- car_final_cost_plot()
+    cost_over_years_plot <- reactive({
+        df <- comparisonData$cost_over_years
+        colnames(df) <- make.unique(colnames(df))
+        #add purchase price
+        df0 <- comparisonData$final_cost[c("Purchase Price"),,drop=FALSE]
+        df0[1,1] <- 0
+        colnames(df0) <- colnames(df)
+        df <- rbind(df0, df)
+
+        df_long <- melt(df, id.vars=c("Year"), na.rm=TRUE)
+        colnames(df_long) <- c("Year", "Model", "Cost")
+        df_long$Cost <- as.numeric(df_long$Cost)
+        df_long$Year <- as.numeric(df_long$Year)
+
+        if(nrow(df_long)>1){
+            p <- ggplot(df_long, aes(x=Year, color=Model, y=Cost, group=Model, text=paste0(Model,"\n",c("Purchase Price", paste0("End of year ", seq_len(input$keep_years))),": ",Cost))) + geom_line(lwd=1) + geom_point(size=3)
+            p <- p + scale_y_continuous(limits = c(0, max(df_long$Cost))) + scale_x_continuous(limits = c(0, input$keep_years), breaks = seq(from=0, to=input$keep_years, by=5), minor_breaks = seq(from=0, to=input$keep_years, by=1))
+            p <- p + theme_minimal() + ylab("Ownership Cost") + xlab(NULL)
+            p <- p + theme(panel.grid.major.x = element_line(size = 2), panel.grid.minor.x = element_line(color="grey"))
+            p
+        }
+     })
+
+    final_cost_plot <- reactive({
+        df <- comparisonData$final_cost[c("Depreciation Cost", "Remaining Value", "Operational Cost", "Final Cost"),]
+        colnames(df) <- make.unique(colnames(df))
+        df_long <- melt(as.matrix(df[,-which(colnames(df)=="Breakdown")]), na.rm=T , varnames="Breakdown")
+        colnames(df_long) <- c("Breakdown", "Model", "Cost")
+        df_long$Cost <- as.numeric(df_long$Cost)
+        df_long$Breakdown <- factor(df_long$Breakdown, levels=c("Remaining Value", "Depreciation Cost", "Operational Cost", "Final Cost"))
+        point_cols <- gg_color_hue(length(unique(df_long$Model))); names(point_cols) <- unique(df_long$Model)
+
+        if(nrow(df_long)>1){
+            p <- ggplot(subset(df_long, Breakdown!="Final Cost"), aes(x=Model, y=Cost, fill=Breakdown, text=paste0(Breakdown,": ", Cost))) + geom_bar(stat = "identity", lwd=3) + geom_point(data=subset(df_long, Breakdown=="Final Cost"), aes(x=Model, y=Cost, color=Model, fill=Model), stroke=0, size=5)
+            max_y <- max(comparisonData$cost_over_years, na.rm=TRUE)  #set ylim the same as other plot
+            p <- p + scale_y_continuous(limits = c(0, max_y))
+            p <- p + theme_minimal() + ylab("Cost") + xlab(NULL)
+            p <- p + theme(panel.grid.major.y = element_line(size = 2), panel.grid.major.x=element_blank(), panel.grid.minor.x=element_blank(),
+                axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+            p <- p + scale_fill_manual(values=c("Depreciation Cost"=rgb(0,0.2,0.5,1), "Operational Cost"=rgb(0.9,0.3,0.3,1), "Remaining Value"=rgb(0,0.5,1,0.2),point_cols)) 
+            p
+        }
+
+    })
+
+
+    output$combinedCarPlot <- renderPlotly({
+        p0 <- purchase_price_plot()
+        p1 <- cost_over_years_plot() 
+        p2 <- final_cost_plot()
 
         if(all(c(!is.null(p1), !is.null(p2)))){
             #merge plots
-            gp1 <- ggplotly(p1, height=800)
-            gp2 <- ggplotly(p2, height=800)
-            sp <- subplot(gp1,gp2, widths = c(0.8,0.2), shareY = T, margin=0)
-            # sp <- sp %>% layout(hovermode='x', legend = list(orientation = 'h', title="none", y=1, yanchor="bottom", x=0.5, xanchor="center", margin = list(l = 20, r = 100)) )
+            gp0 <- ggplotly(p0, height=800, tooltip = "text")
+            gp1 <- ggplotly(p1, height=800, tooltip = "text")
+            gp2 <- ggplotly(p2, height=800, tooltip = "text")
+GP1 <<- gp1
+GP2 <<- gp2
+GP0 <<- gp0
+            sp <- subplot(gp0, gp1,gp2, widths = c(0.15,0.7,0.15), shareY = T, margin=0)
+SP <<- sp
 
             #FORMAT THE LEGEND NICELY:
             df_long2 <- p1$data
+DFLONG2 <<- df_long2            
             #create minimal datasets to force legend display
-            model.df <- data.frame(Year=-1, Cost=0, Model=unique(df_long2$Model))
-            cost_type.df <- data.frame(Year=-1, Cost=0, cost_type=c("Cost of ownership", "Purchase price"))
-            breakdown.df <- data.frame(Year=-1, Cost=0, Breakdown=c("Depreciation Cost", "Operational Cost"))
-
-            markercolors <- gg_color_hue(nrow(model.df))
-
+            model.df <- data.frame(Year=-1, Cost=0, Model=unique(df_long2$Model), color=gg_color_hue(length(unique(df_long2$Model))))
+            breakdown.df <- data.frame(Year=-1, Cost=0, Breakdown=c("Purchase Price","Resale Value", "Depreciation Cost", "Operational Cost"), color=c(rgb(0,0.3,0.9,1), rgb(0,0.5,1,0.2), rgb(0,0.2,0.5,1), rgb(0.9,0.1,0.1,1)))
+            breakdown.df$Breakdown <- factor(breakdown.df$Breakdown, levels=c("Purchase Price","Resale Value", "Depreciation Cost", "Operational Cost"))
+# "Depreciation Cost"=rgb(0,0.2,0.5,1), "Operational Cost"=rgb(0.9,0.3,0.3,1), "Remaining Value"=rgb(0,0.5,1,0.2)
             #force legend in plotly
             sp <- sp %>%
               layout( #hide gglotly legend
@@ -1008,30 +1029,34 @@ server <- function(input, output, session) {
               add_trace(
                 data = model.df, x = ~ Year, y = ~ Cost,
                 inherit = FALSE, type = "scatter", mode = "markers",
-                marker = list(color = markercolors, size = 14, opacity = 0.6, symbol = "circle"),
+                marker = list(color = model.df$color, size = 14, opacity = 0.6, symbol = "circle"),
                 name = ~ Model, legendgroup = "Model",  legendgrouptitle = list(text = "Model")
               ) %>%
-              add_trace(
-                data = cost_type.df, x = ~ Year, y = ~ Cost,
-                inherit = FALSE, type = "scatter",  mode = "markers",
-                marker = list(color = "darkgrey", size = 14, opacity = 0.6, symbol = c("circle", "triangle-up")),
-                name = ~cost_type, legendgroup = "Type", legendgrouptitle = list(text = "Type")
-              )  %>%
               add_trace( 
                 data = breakdown.df, x = ~ Year, y = ~ Cost,
                 inherit = FALSE, type = "scatter",  mode = "markers",
-                marker = list(color = c("#ff9d4c", "#9452a9"), size = 14, opacity = 0.6, symbol = c("square")),
+                marker = list(color = breakdown.df$color, size = 14, opacity = 0.6, symbol = c("square")),
                 name = ~Breakdown, legendgroup = "Breakdown", legendgrouptitle = list(text = "Breakdown")
               )  %>% 
-              style(showlegend = FALSE, traces = 1:(nrow(breakdown.df)+2*nrow(model.df))) #remove the 2 Breakdown and the 2 x models legend points
+              style(showlegend = FALSE, traces = 1:(nrow(breakdown.df) + 3*nrow(model.df))) #remove the Breakdown labels + the car names (1 for each point) legends
 
-            sp <- sp %>% layout(hovermode='x', legend = list(orientation = 'h', title="none", y=1, yanchor="bottom", x=0.5, xanchor="center", margin = list(l = 20, r = 100)) )
+            sp <- sp %>% layout(hovermode='x', legend = list(orientation = 'h', title="none", y=1, yanchor="bottom", x=0.5, xanchor="center", margin = list(l = 20, r = 100)), xaxis = list(title = '') )
 
             #Add titles
-            annotations = list( 
+            annotations = list(
               list( 
-                x = 0.35,  
-                y = 0.95,  
+                x = 0.08,  
+                y = 0.97,  
+                text = "Purchase Price",  
+                xref = "paper",  
+                yref = "paper",  
+                xanchor = "center",  
+                yanchor = "bottom",  
+                showarrow = FALSE 
+              ),                
+              list( 
+                x = 0.50,  
+                y = 0.97,  
                 text = "Cost of ownership",  
                 xref = "paper",  
                 yref = "paper",  
@@ -1040,8 +1065,8 @@ server <- function(input, output, session) {
                 showarrow = FALSE 
               ),  
               list( 
-                x = 0.88,  
-                y = 0.95,  
+                x = 0.92,  
+                y = 0.97,  
                 text = "Cost of ownership after resale",  
                 xref = "paper",  
                 yref = "paper",  

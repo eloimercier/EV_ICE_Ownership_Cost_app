@@ -114,7 +114,7 @@ tabItem(tabName = "compare",
                     )
                 ),
                 tabPanel(title="Plot", value="plot",
-                    plotlyOutput("CarComparisonPlot")
+                    plotlyOutput("combinedCarPlot")
                 )      
             )
         )
