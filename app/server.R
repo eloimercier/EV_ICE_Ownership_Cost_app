@@ -95,20 +95,21 @@ server <- function(input, output, session) {
             updateSelectInput(session,"country", selected = "Canada")
             updateSelectInput(session,"region", selected = "Ontario")
         }
+
         #reset options at the end
         if (identical(current_step, "clear_walkthrough_options")) { #reset options when we reach end of tour or if tour cancel
             updateSelectInput(session,"region", selected = "")
             updateSelectInput(session,"make1", selected = "")
             updateSelectInput(session,"make2", selected = "")
             updateCollapse(session, id="model_variable_table_collapsible", open = NULL, close = "model_variable_collapse", style = NULL)
-            updateTabItems(session, inputId="sidebarID", selected="user_info")
+            updateTabsetPanel(session, inputId="tabsetPanel", selected="user_info")
             updateTabsetPanel(session, inputId="comparison_panels", selected="table")
             updateSelectInput(session,"country", selected = "")
         }
 
         #actions at specific steps
         if(identical(current_step, "comparator.transistion")){
-            updateTabItems(session, inputId="sidebarID", selected="compare")
+            updateTabsetPanel(session, inputId="tabsetPanel", selected="comparison_tab")
             updateSelectInput(session,"make1", selected = "Honda")
             updateSelectInput(session,"make2", selected = "Hyundai")
             updateSelectInput(session,"model1", selected = "CRV")

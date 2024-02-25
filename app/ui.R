@@ -2,6 +2,7 @@
 ui <- fluidPage(
 
     tags$style("@import url(https://use.fontawesome.com/releases/v5.7.2/css/all.css);"), #to load all fonts
+    useConductor(), #for dynamic walkthrough
 
 ##############################################################
 ############################ LEFT PANEL ##########################
@@ -32,7 +33,7 @@ ui <- fluidPage(
 
       
         mainPanel(
-            tabsetPanel(
+            tabsetPanel(id="tabsetPanel",
 
                 ############################
                 #CAR LIST
