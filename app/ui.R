@@ -1,7 +1,7 @@
 
 ui <- fluidPage(
 
-      tags$style("@import url(https://use.fontawesome.com/releases/v5.7.2/css/all.css);"), #to load all fonts
+    tags$style("@import url(https://use.fontawesome.com/releases/v5.7.2/css/all.css);"), #to load all fonts
 
 ##############################################################
 ############################ LEFT PANEL ##########################
@@ -35,16 +35,10 @@ ui <- fluidPage(
             tabsetPanel(
 
                 ############################
-                #USER INFO
-                ############################        
-                # tabPanel("user_info", 
-                #     plotOutput("plot")), 
-
-                ############################
                 #CAR LIST
                 ############################
                 tabPanel("Car Overview",value="car_list_tab", 
-                    h3("Car prices are given for reference only and might not reflect current pricing."),
+                    h3("Car prices are given for reference only and might not reflect current pricing.              focuses on affordable Battery Electric Vehicles (BEVs) available in Canada. It is not meant to encompass all EVs on the market. A few Internal Combustion Engine (ICE) vehicles have been included to the list for comparison.<br><br>"),
                     dataTableOutput("car_table")
                 ), 
 

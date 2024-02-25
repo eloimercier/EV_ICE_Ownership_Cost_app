@@ -4,7 +4,7 @@
 ##############################################################
 
 library(shiny)
-library(shinydashboard)
+library(shinyalert)
 library(openxlsx)
 library(DT)
 library(shinyWidgets)
@@ -14,7 +14,7 @@ library(plotly)
 library(reshape2)
 library(shinyBS)
 library(conductor)
-library(shinyWidgets )
+library(shinyWidgets)
 
 calculate_depreciation_from_10year_rate <- function(depreciation_10_years, n_years=10){
 	#e.g. depreciation after 10 years is 25% of MSRP, yearly depreciation is 0.25^(1/10)=0.87

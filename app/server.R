@@ -3,6 +3,18 @@ server <- function(input, output, session) {
 
   verbose <- FALSE
   
+
+##############################################################
+######################### WELCOME ############################
+##############################################################
+
+    observe({
+        shinyalert("Welcome to the EV Comparator App", HTML("<br><br>
+            This app aims to provide an overview of the ownership cost of Battery Electric Vehicles (BEVs) in comparison to Internal Combustion Engine (ICE). <br><br>
+            <b>Start by selecting your country and the expected average yearly distance driven.</b><br><br>
+            <i>The information in this document are provided for information only with no guarantee of accuracy</i>"), type = "info", html=TRUE) 
+    }) 
+
 ##############################################################
 ########################### SETUP ############################
 ##############################################################
