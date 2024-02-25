@@ -17,7 +17,7 @@ ui <- fluidPage(
 ############################ LEFT PANEL ##########################
 ##############################################################
 
-    sidebarPanel(
+    sidebarPanel(width=2,
         actionButton("walkthroughBtn", label="Interactive Walkthrough", icon.library="font awesome",css.class='sc-button'),
         uiOutput("user_countryUI"),
         uiOutput("user_regionUI"),
