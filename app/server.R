@@ -1,7 +1,7 @@
 
 server <- function(input, output, session) {
 
-  verbose <- FALSE
+  verbose <- TRUE
   
 
 ##############################################################
@@ -34,10 +34,9 @@ server <- function(input, output, session) {
 
     countrySpecificData <- reactiveValues(names_for_regions=NA, is_federation=NA, tax_included=NA,
                                         currency_name=NA, currency_symbol=NA, currency_symbol_cent=NA, distance=NA,
-                                        gas_efficiency=NA, gas_rate=NA,   electricity_efficiency=NA, electricity_rate=NA,
+                                        gas_efficiency=NA, gas_rate=NA, electricity_efficiency=NA, electricity_rate=NA,
                                         region_list=NA )
-    generalModelData <- reactiveValues(country=NA,  region=NA, rebate_condition=NA,
-                                        country_wide_rebate=NA, country_wide_max_msrp=NA, region_rebate=NA, region_max_msrp=NA, tax=NA, gas_rate=NA, electricity_rate=NA, #region specific
+    generalModelData <- reactiveValues( federal_rebate=NA, federal_max_msrp=NA, region_rebate=NA, region_max_msrp=NA, tax=NA, gas_rate=NA, electricity_rate=NA, #region specific
                                         ice_efficiency=8, ice_maintenance=NA, bev_efficiency=15, bev_maintenance=NA, depreciation_rate=13, depreciation_value_10year=25, gas_increase=5, electricity_increase=1) #fixed
 
     dataTables <- reactiveValues(car_data=data.frame(), rebates=NA, taxes=NA, gas=NA, electricity=NA, fees=NA, delivery_fees=NA)
@@ -52,92 +51,96 @@ server <- function(input, output, session) {
 ######################## WALKTHROUGH #########################
 ##############################################################
 
-    walkthrough <- Conductor$new(
-        exitOnEsc = FALSE,
-        keyboardNavigation = TRUE)$
-        step(title="<b>Welcome!</b>", text="Welcome to the Electric Vehicle Comparison Tool!",id = "first")$
-        step(title="<b>Enter your info</b>", text="This is where you select your country, region, the distance driven annually and how long you intend to keep the car for.", el="#country", 
-            id = "user_info.1")$
-        step(title="<b>Enter your info</b>", text="This will determine the model parameters such has potential rebates, electricity price, resale value, etc.", el="#country", 
-            id = "user_info.2")$
-        step(title="<b>Comparison tool</b>",text="This is the comparison tool. It allows you to compare up to 5 cars and see how much it will cost you at the end of the period.", 
-            id = "comparator.transistion", buttons = list(list(action = "next",text = "Next")))$
-        step(title="<b>Select cars for comparison</b>", text="Select the make, model and trim among the available cars.", el="#CarMake1UI", 
-            id = "comparator.1")$
-        step(title="<b>Default model parameters</b>", text="Default parameters are automatically applied based on the user info.<br><br><i>Note: the default parameters are taken from the tables in the 'Parameters' tab.</i>",el="#CarSelectedVariableTable", 
-            id = "comparator.2")$
-        step(title="<b>Customize model parameters</b>", text="You can fully customize the model if the default values do not match your profile.<br><br><i>Edit the parameters by double-clicking a cell and enter a new value.</i>",el="#CarSelectedVariableTable", 
-            id = "comparator.3")$
-        step(title="<b>Cost of ownership</b>", text="The tool calculates the cost of ownership over the period.<br><br>This is how much you can expect to have spent at the end of the period.", el="#CarComparisonTable", 
-            id = "comparator.4")$
-        step(title="<b>Cost of ownership after resale</b>", text="Assuming you resale the vehicle at the end of the period, this is how much it did cost you.", el="#CarFinalCostTable", 
-            id = "comparator.5")$
-        step(title="<b>Comparison plot</b>", text="This is a graphical representation of the cost of ownership.", el="#plot",
-            id = "compararison_plot.transistion", buttons = list(list(action = "next",text = "Next")))$
-        step(title="<b>Comparison plot</b>", text="In this scenario, the Honda CRV ends up being more expensive that the Hyundai IONIQ5 after 7 years despite a lower MSRP.", el="#combinedCarPlot", 
-            id = "compararison_plot.2")$
-        step(title="<b>Change your info</b>", text="You can always change the parameters here to see how it affects the model.", 
-            id = "clear_walkthrough_options")$
-        step(title="<b>Questions or Comments?</b>", text='Visit my <a href="https://github.com/eloimercier/EV_app">github repo</a> if you have any questions or comments.', 
-            id = "last", buttons = list(list(action = "back",secondary = TRUE, text = "Previous"),list(action = "next",text = "Finish")))
+    # walkthrough <- Conductor$new(
+    #     exitOnEsc = FALSE,
+    #     keyboardNavigation = TRUE)$
+    #     step(title="<b>Welcome!</b>", text="Welcome to the Electric Vehicle Comparison Tool!",id = "first")$
+    #     step(title="<b>Enter your info</b>", text="This is where you select your country, region, the distance driven annually and how long you intend to keep the car for.", el="#country", 
+    #         id = "user_info.1")$
+    #     step(title="<b>Enter your info</b>", text="This will determine the model parameters such has potential rebates, electricity price, resale value, etc.", el="#country", 
+    #         id = "user_info.2")$
+    #     step(title="<b>Comparison tool</b>",text="This is the comparison tool. It allows you to compare up to 5 cars and see how much it will cost you at the end of the period.", 
+    #         id = "comparator.transistion", buttons = list(list(action = "next",text = "Next")))$
+    #     step(title="<b>Select cars for comparison</b>", text="Select the make, model and trim among the available cars.", el="#CarMake1UI", 
+    #         id = "comparator.1")$
+    #     step(title="<b>Default model parameters</b>", text="Default parameters are automatically applied based on the user info.<br><br><i>Note: the default parameters are taken from the tables in the 'Parameters' tab.</i>",el="#CarSelectedVariableTable", 
+    #         id = "comparator.2")$
+    #     step(title="<b>Customize model parameters</b>", text="You can fully customize the model if the default values do not match your profile.<br><br><i>Edit the parameters by double-clicking a cell and enter a new value.</i>",el="#CarSelectedVariableTable", 
+    #         id = "comparator.3")$
+    #     step(title="<b>Cost of ownership</b>", text="The tool calculates the cost of ownership over the period.<br><br>This is how much you can expect to have spent at the end of the period.", el="#CarComparisonTable", 
+    #         id = "comparator.4")$
+    #     step(title="<b>Cost of ownership after resale</b>", text="Assuming you resale the vehicle at the end of the period, this is how much it did cost you.", el="#CarFinalCostTable", 
+    #         id = "comparator.5")$
+    #     step(title="<b>Comparison plot</b>", text="This is a graphical representation of the cost of ownership.", el="#plot",
+    #         id = "compararison_plot.transistion", buttons = list(list(action = "next",text = "Next")))$
+    #     step(title="<b>Comparison plot</b>", text="In this scenario, the Honda CRV ends up being more expensive that the Hyundai IONIQ5 after 7 years despite a lower MSRP.", el="#combinedCarPlot", 
+    #         id = "compararison_plot.2")$
+    #     step(title="<b>Change your info</b>", text="You can always change the parameters here to see how it affects the model.", 
+    #         id = "clear_walkthrough_options")$
+    #     step(title="<b>Questions or Comments?</b>", text='Visit my <a href="https://github.com/eloimercier/EV_app">github repo</a> if you have any questions or comments.', 
+    #         id = "last", buttons = list(list(action = "back",secondary = TRUE, text = "Previous"),list(action = "next",text = "Finish")))
 
-    observeEvent(input$walkthroughBtn,{
-        #start walktorugh
-        walkthrough$init()$start()
-    })
+    # observeEvent(input$walkthroughBtn,{
+    #     #start walktorugh
+    #     walkthrough$init()$start()
+    # })
 
-    observe({
-        current_step <- walkthrough$getCurrentStep()
-        btn <- input$walkthroughBtn #to force update
+    # observe({
+    #     current_step <- walkthrough$getCurrentStep()
+    #     btn <- input$walkthroughBtn #to force update
 
-        #step options for walkthrough
-        if(identical(current_step, "first")){
-            updateSelectInput(session,"country", selected = "Canada")
-            updateSelectInput(session,"region", selected = "Ontario")
-        }
+    #     #step options for walkthrough
+    #     if(identical(current_step, "first")){
+    #         updateSelectInput(session,"country", selected = "Canada")
+    #         updateSelectInput(session,"region", selected = "Ontario")
+    #     }
 
-        #reset options at the end
-        if (identical(current_step, "clear_walkthrough_options")) { #reset options when we reach end of tour or if tour cancel
-            updateSelectInput(session,"region", selected = "")
-            updateSelectInput(session,"make1", selected = "")
-            updateSelectInput(session,"make2", selected = "")
-            updateCollapse(session, id="model_variable_table_collapsible", open = NULL, close = "model_variable_collapse", style = NULL)
-            updateTabsetPanel(session, inputId="tabsetPanel", selected="user_info")
-            updateTabsetPanel(session, inputId="comparison_panels", selected="table")
-            updateSelectInput(session,"country", selected = "")
-        }
+    #     #reset options at the end
+    #     if (identical(current_step, "clear_walkthrough_options")) { #reset options when we reach end of tour or if tour cancel
+    #         updateSelectInput(session,"region", selected = "")
+    #         updateSelectInput(session,"make1", selected = "")
+    #         updateSelectInput(session,"make2", selected = "")
+    #         updateCollapse(session, id="model_variable_table_collapsible", open = NULL, close = "model_variable_collapse", style = NULL)
+    #         updateTabsetPanel(session, inputId="tabsetPanel", selected="user_info")
+    #         updateTabsetPanel(session, inputId="comparison_panels", selected="table")
+    #         updateSelectInput(session,"country", selected = "")
+    #     }
 
-        #actions at specific steps
-        if(identical(current_step, "comparator.transistion")){
-            updateTabsetPanel(session, inputId="tabsetPanel", selected="comparison_tab")
-            updateSelectInput(session,"make1", selected = "Honda")
-            updateSelectInput(session,"make2", selected = "Hyundai")
-            updateSelectInput(session,"model1", selected = "CRV")
-            updateSelectInput(session,"model2", selected = "IONIQ 5")
-            updateCollapse(session, id="model_variable_table_collapsible", open = "model_variable_collapse", close = NULL, style = NULL)
-        }
-        if(identical(current_step, "compararison_plot.transistion")){
-            updateTabsetPanel(session, inputId="comparison_panels", selected="plot")
-        }
+    #     #actions at specific steps
+    #     if(identical(current_step, "comparator.transistion")){
+    #         updateTabsetPanel(session, inputId="tabsetPanel", selected="comparison_tab")
+    #         updateSelectInput(session,"make1", selected = "Honda")
+    #         updateSelectInput(session,"make2", selected = "Hyundai")
+    #         updateSelectInput(session,"model1", selected = "CRV")
+    #         updateSelectInput(session,"model2", selected = "IONIQ 5")
+    #         updateCollapse(session, id="model_variable_table_collapsible", open = "model_variable_collapse", close = NULL, style = NULL)
+    #     }
+    #     if(identical(current_step, "compararison_plot.transistion")){
+    #         updateTabsetPanel(session, inputId="comparison_panels", selected="plot")
+    #     }
 
-    })
+    # })
 
 
 ##############################################################
 ######################### USER INFO ##########################
 ##############################################################
 
-    userInfo <- reactiveValues(country=NULL, region=NULL, yearly_distance=NULL, keep_years=NULL)
+######### Collect user info
+
+    userInfo <- reactiveValues(country=NULL, region=NULL, yearly_distance=NULL, keep_years=NULL) 
 
     observeEvent(c(input$country, input$region, input$yearly_distance, input$keep_years),{
-        userInfo$region          <- ifelse(is.null(input$region) | !identical(userInfo$country,input$country), input$country, input$region)
+        region <- ifelse(is.null(input$region) | !identical(userInfo$country,input$country), input$country, input$region) #return country name if input$region not spcified or when changing country
+        userInfo$region          <- ifelse(is.null(input$region) | !identical(userInfo$country,input$country), input$country, input$region) #return country name if input$region not spcified or when changing country
         userInfo$country         <- input$country 
         userInfo$yearly_distance <- input$yearly_distance 
         userInfo$keep_years      <- input$keep_years
     })
 
 
-######### Setup country specific data
+######### Create UI elements
+
     output$user_countryUI <- renderUI({
         country_list <- names(countryInfo)
         selectizeInput('country', 'Country:', c(country_list),
@@ -147,165 +150,18 @@ server <- function(input, output, session) {
                 ))            
     })
 
-    observeEvent(input$country,{
-        req(input$country)
-        # if(!is.null(input$country) & !identical(input$country,"")){
-
-            if(verbose) print("*********************")
-            if(verbose) print("Setting up country parameters")
-
-            generalModelData$region <- generalModelData$country #set region = country by default
-
-            #set up country specific parameters
-            country_info <- countryInfo[[input$country]]
-            for (i in 1:length(country_info)){
-                var <- names(country_info)[i]
-                countrySpecificData[[var]] <- country_info[[var]]
-            }
-            generalModelData$ice_maintenance <- country_info$ice_maintenance
-            generalModelData$bev_maintenance <- country_info$bev_maintenance
-
-            #read specific spreadsheet
-            country_file <- paste0("data/EV_list_",input$country,".xlsx")
-            dataTables$rebates <- read.xlsx(country_file, sheet="Rebates")
-            dataTables$taxes <- read.xlsx(country_file, sheet="Taxes", rowNames = TRUE)
-            dataTables$gas <- read.xlsx(country_file, sheet="Gas", rowNames = TRUE)
-            dataTables$electricity <- read.xlsx(country_file, sheet="Electricity", rowNames = TRUE)
-            dataTables$delivery_fees <- read.xlsx(country_file, sheet="Fees", rowNames = TRUE)
-
-            #read car data
-            car_data <- read.xlsx(country_file, sheet="Cars", check.names = TRUE)
-            rownames(car_data) <- paste(car_data$Make, car_data$Model, car_data$Trim)
-            colnames(car_data) <- c("Make","Model", "Trim", "Engine", "MSRP", "Link", "Traction","Range (km)", "AC Charging rate (kW)", "DC Fast Charging rate (kW)","HP")
-            dataTables$car_data <- car_data
-
-            #read rebate table
-            dataTables$rebates <- read.xlsx(country_file, sheet="Rebates")
-
-            #set up region list
-            all_regions <- dataTables$rebates[,1]
-            if(countrySpecificData$is_federation){ #remove federal
-                all_regions <- all_regions[all_regions!="Federal"]
-            }
-            all_regions <- all_regions[-grep("Source", all_regions)] #remove source info
-            countrySpecificData$region_list <- unique(all_regions)
-
-            #set country wide rebate
-            tax_table <- dataTables$taxes
-            rebates_table <- dataTables$rebates
-
-            if(identical(countrySpecificData$is_federation, TRUE)){
-                generalModelData$country_wide_rebate <- as.numeric(rebates_table[rebates_table[,"Region"] == "Federal", "Maximum.amount"])
-                country_wide_max_msrp <- as.numeric(rebates_table[rebates_table[,"Region"] == "Federal", "If.MSRP.below..."])
-                if(is.na(country_wide_max_msrp)) country_wide_max_msrp <- Inf
-                generalModelData$country_wide_max_msrp <- country_wide_max_msrp
-                generalModelData$region_rebate <- 0 # we will set it up later
-                generalModelData$region_max_msrp <- 0 # we will set it up later
-                generalModelData$tax <- as.numeric(tax_table["Federal",1]) + 0 # we will add region tax later
-                generalModelData$gas_rate  <- 0 # we will set it up later
-                generalModelData$electricity_rate <- 0 # we will set it up later                  
-            } else {
-                generalModelData$country_wide_rebate <- as.numeric(rebates_table[rebates_table[,"Region"] == input$country,"Maximum.amount"])
-                country_wide_max_msrp <- as.numeric(rebates_table[rebates_table[,"Region"] == input$country,"If.MSRP.below..."])
-                if(is.na(country_wide_max_msrp)) country_wide_max_msrp <- Inf
-                generalModelData$country_wide_max_msrp <- country_wide_max_msrp
-                generalModelData$region_rebate <- 0
-                generalModelData$region_max_msrp <- 0 
-                generalModelData$tax <- as.numeric(tax_table[input$country,1])
-                generalModelData$gas_rate  <- as.numeric(dataTables$gas[input$country,1])
-                generalModelData$electricity_rate <- as.numeric(dataTables$electricity[input$country,1])
-                if(verbose) print(paste0("Tax/Gas/Electricity rates: ", generalModelData$tax, "/", generalModelData$gas_rate, "/", generalModelData$electricity_rate))
-            }
-        # } else {
-        #     #reset data
-        #     countrySpecificData$names_for_regions <- countrySpecificData$is_federation <- countrySpecificData$tax_included <- countrySpecificData$currency_name  <- countrySpecificData$currency_symbol <- countrySpecificData$currency_symbol_cent <- NA
-        #     countrySpecificData$distance <- countrySpecificData$gas_efficiency <- countrySpecificData$gas_rate <- countrySpecificData$electricity_efficiency <- countrySpecificData$electricity_rate <- countrySpecificData$region_list <- NA
-        #     generalModelData$region <- ""
-        #     dataTables$car_data=data.frame()
-        #     dataTables$rebates <- dataTables$taxes <- dataTables$gas <- dataTables$electricity <- dataTables$fees <- dataTables$delivery_fees <- NA
-        # }
-    })
-
-
-######### Setup region specific data
-
     output$user_regionUI <- renderUI({
         req(input$country)
         region_list <- countrySpecificData$region_list #when country not yet selected
 
-        if(length(region_list)>1){
-            selectizeInput('region',  paste0(countrySpecificData$names_for_regions,":"), c(region_list),
-                options = list(
-                    placeholder = 'Please select an option below',
-                    onInitialize = I('function() { this.setValue(""); }')
-                    ))  
-        }
+        selectizeInput('region',  paste0(countrySpecificData$names_for_regions,":"), c(region_list),
+            options = list(
+                placeholder = 'Please select an option below',
+                onInitialize = I('function() { this.setValue(""); }')
+                ))  
+    
     })
 
-    observeEvent(c(input$region),{
-
-        # 3 situations: 
-        # country is not federation -> get rebate matching country
-        # country is federation -> get rebate matching region
-        req(input$country)
-
-        if(!countrySpecificData$is_federation) {
-            stop("This should only be executed when country is a federation. What went wrong?")
-        }
-        if(!is.null(input$region)){
-
-            if(verbose) print("Setting up region parameters")
-            rebate_table <- dataTables$rebates
-
-            rebate_info_federal <- rebate_table[rebate_table$Region == "Federal",,drop=FALSE]
-            country_wide_rebate <- as.numeric(rebate_info_federal[1,"Maximum.amount"])
-            country_wide_max_msrp <- as.numeric(rebate_info_federal[1,"If.MSRP.below..."])
-
-            region <- input$region
-            region_info_rebate <- rebate_table[rebate_table[,"Region"]==region,,drop=FALSE]
-            # if(nrow(region_info_rebate)>1){ # get rebate matching region + condition
-            #     if(verbose) print("** Multiple rebates exist for this region **")
-            #     region_info_rebate_specific <- region_info_rebate[region_info_rebate[,4]==input$rebate_condition,,drop=FALSE]
-            #     region_rebate <- as.numeric(region_info_rebate_specific[1,"Maximum.amount"])
-            #     region_max_msrp <- as.numeric(region_info_rebate_specific[1,"If.MSRP.below..."])
-            # } else { #get rebate matching region
-                if(verbose) print("** There is only one rebate for that region **")
-                region_rebate <- as.numeric(region_info_rebate[1,"Maximum.amount"])
-                region_max_msrp <- as.numeric(region_info_rebate[1,"If.MSRP.below..."])
-            # }
-
-
-            # if rebate not specified (i.e. NA), set rebate to 0
-            if(is.na(country_wide_rebate)) country_wide_rebate <- 0
-            if(is.na(region_rebate)) region_rebate <- 0
-
-            # if max amount not specified (i.e. NA), set max eligible MSRP to Infinite
-            # if(is.na(country_wide_max_msrp)) country_wide_max_msrp <- Inf
-            if(is.na(region_max_msrp)) region_max_msrp <- Inf
-
-            generalModelData$country_wide_rebate <- country_wide_rebate
-            generalModelData$country_wide_max_msrp <- country_wide_max_msrp
-
-            generalModelData$region_rebate <- region_rebate
-            generalModelData$region_max_msrp <- region_max_msrp
-            generalModelData$region <- region
-
-            ############## Get utility rates
-            tax_table <- dataTables$taxes
-            country_wide_tax <- generalModelData$tax 
-            region_tax <- as.numeric(tax_table[input$region,1])
-            total_tax <- country_wide_tax + region_tax
-            gas_rate  <- as.numeric(dataTables$gas[input$region,1])
-            electricity_rate <- as.numeric(dataTables$electricity[input$region,1])                
-            if(verbose) print(paste0("Tax/Gas/Electricity rates: ", generalModelData$tax, "/", generalModelData$gas_rate, "/", generalModelData$electricity_rate))
-
-            generalModelData$tax <- total_tax
-            generalModelData$gas_rate <- gas_rate
-            generalModelData$electricity_rate <- electricity_rate
-        }
-    })
-
-######### Setup distance and time
 
     output$user_kms_yearsUI <- renderUI({
       tagList(
@@ -314,44 +170,210 @@ server <- function(input, output, session) {
       )
     })
 
+######### Setup country specific data
+
+
+    observeEvent(input$country,{
+        req(input$country)
+        if(verbose) print("Setting up country parameters")
+
+        #get data
+        country_file <- paste0("data/EV_list_",input$country,".xlsx")
+        dataTables$rebates <- read.xlsx(country_file, sheet="Rebates")
+        dataTables$taxes <- read.xlsx(country_file, sheet="Taxes", rowNames = TRUE)
+        dataTables$gas <- read.xlsx(country_file, sheet="Gas", rowNames = TRUE)
+        dataTables$electricity <- read.xlsx(country_file, sheet="Electricity", rowNames = TRUE)
+        dataTables$delivery_fees <- read.xlsx(country_file, sheet="Fees", rowNames = TRUE)
+        dataTables$car_data <- read.xlsx(country_file, sheet="Cars", check.names = TRUE)
+        dataTables$rebates <- read.xlsx(country_file, sheet="Rebates")
+
+        #set up country specific parameters
+        country_info <- countryInfo[[input$country]]
+        for (i in 1:length(country_info)){
+            var <- names(country_info)[i]
+            countrySpecificData[[var]] <- country_info[[var]]
+        }
+
+        #get region list
+        all_regions <- dataTables$rebates[,1]
+        if(countrySpecificData$is_federation){ #remove federal
+            all_regions <- all_regions[all_regions!="Federal"]
+        }
+        all_regions <- all_regions[-grep("Source", all_regions)] #remove source info
+        countrySpecificData$region_list <- unique(all_regions)
+    })
+
+
+
+    # observeEvent(input$country,{
+    #     req(input$country)
+
+    #     if(verbose) print("*********************")
+    #     if(verbose) print("Setting up country parameters")
+
+    #     generalModelData$region <- generalModelData$country #set region = country by default
+
+    #     #set up country specific parameters
+    #     country_info <- countryInfo[[input$country]]
+    #     for (i in 1:length(country_info)){
+    #         var <- names(country_info)[i]
+    #         countrySpecificData[[var]] <- country_info[[var]]
+    #     }
+    #     generalModelData$ice_maintenance <- country_info$ice_maintenance
+    #     generalModelData$bev_maintenance <- country_info$bev_maintenance
+
+    #     #read specific spreadsheet
+    #     country_file <- paste0("data/EV_list_",input$country,".xlsx")
+    #     dataTables$rebates <- read.xlsx(country_file, sheet="Rebates")
+    #     dataTables$taxes <- read.xlsx(country_file, sheet="Taxes", rowNames = TRUE)
+    #     dataTables$gas <- read.xlsx(country_file, sheet="Gas", rowNames = TRUE)
+    #     dataTables$electricity <- read.xlsx(country_file, sheet="Electricity", rowNames = TRUE)
+    #     dataTables$delivery_fees <- read.xlsx(country_file, sheet="Fees", rowNames = TRUE)
+
+    #     #read car data
+    #     car_data <- read.xlsx(country_file, sheet="Cars", check.names = TRUE)
+    #     rownames(car_data) <- paste(car_data$Make, car_data$Model, car_data$Trim)
+    #     colnames(car_data) <- c("Make","Model", "Trim", "Engine", "MSRP", "Link", "Traction","Range (km)", "AC Charging rate (kW)", "DC Fast Charging rate (kW)","HP")
+    #     dataTables$car_data <- car_data
+
+    #     #read rebate table
+    #     dataTables$rebates <- read.xlsx(country_file, sheet="Rebates")
+
+    #     #set up region list
+    #     all_regions <- dataTables$rebates[,1]
+    #     if(countrySpecificData$is_federation){ #remove federal
+    #         all_regions <- all_regions[all_regions!="Federal"]
+    #     }
+    #     all_regions <- all_regions[-grep("Source", all_regions)] #remove source info
+    #     countrySpecificData$region_list <- unique(all_regions)
+
+    #     #set country wide rebate
+    #     tax_table <- dataTables$taxes
+    #     rebates_table <- dataTables$rebates
+
+    #     if(identical(countrySpecificData$is_federation, TRUE)){
+    #         generalModelData$federal_rebate <- as.numeric(rebates_table[rebates_table[,"Region"] == "Federal", "Maximum.amount"])
+    #         federal_max_msrp <- as.numeric(rebates_table[rebates_table[,"Region"] == "Federal", "If.MSRP.below..."])
+    #         if(is.na(federal_max_msrp)) federal_max_msrp <- Inf
+    #         generalModelData$federal_max_msrp <- federal_max_msrp
+    #         generalModelData$region_rebate <- 0 # we will set it up later
+    #         generalModelData$region_max_msrp <- 0 # we will set it up later
+    #         generalModelData$tax <- as.numeric(tax_table["Federal",1]) + 0 # we will add region tax later
+    #         generalModelData$gas_rate  <- 0 # we will set it up later
+    #         generalModelData$electricity_rate <- 0 # we will set it up later                  
+    #     } else {
+    #         generalModelData$federal_rebate <- as.numeric(rebates_table[rebates_table[,"Region"] == input$country,"Maximum.amount"])
+    #         federal_max_msrp <- as.numeric(rebates_table[rebates_table[,"Region"] == input$country,"If.MSRP.below..."])
+    #         if(is.na(federal_max_msrp)) federal_max_msrp <- Inf
+    #         generalModelData$federal_max_msrp <- federal_max_msrp
+    #         generalModelData$region_rebate <- 0
+    #         generalModelData$region_max_msrp <- 0 
+    #         generalModelData$tax <- as.numeric(tax_table[input$country,1])
+    #         generalModelData$gas_rate  <- as.numeric(dataTables$gas[input$country,1])
+    #         generalModelData$electricity_rate <- as.numeric(dataTables$electricity[input$country,1])
+    #         if(verbose) print(paste0("Tax/Gas/Electricity rates: ", generalModelData$tax, "/", generalModelData$gas_rate, "/", generalModelData$electricity_rate))
+    #     }
+    #     # } else {
+    #     #     #reset data
+    #     #     countrySpecificData$names_for_regions <- countrySpecificData$is_federation <- countrySpecificData$tax_included <- countrySpecificData$currency_name  <- countrySpecificData$currency_symbol <- countrySpecificData$currency_symbol_cent <- NA
+    #     #     countrySpecificData$distance <- countrySpecificData$gas_efficiency <- countrySpecificData$gas_rate <- countrySpecificData$electricity_efficiency <- countrySpecificData$electricity_rate <- countrySpecificData$region_list <- NA
+    #     #     generalModelData$region <- ""
+    #     #     dataTables$car_data=data.frame()
+    #     #     dataTables$rebates <- dataTables$taxes <- dataTables$gas <- dataTables$electricity <- dataTables$fees <- dataTables$delivery_fees <- NA
+    #     # }
+    # })
+
+
+######### Setup region specific data and model parameters
+
+
+    observeEvent(input$region,{
+
+
+        req(input$region)
+
+        # region_long is to store the full name of the region when multiple rebate rates exist (e.g. "BC (>80k income)"); 'region' is the shotrhen version of it (e.g. "BC")
+        region_long <- input$region #for rebate table
+        region <- trimws(gsub("\\(.*\\)", "", input$region)) #for everything else
+
+        if(verbose) print("Setting up region parameters")
+
+        #get rabates
+        rebate_table <- dataTables$rebates
+        rebate_info_federal <- rebate_table[rebate_table$Region == "Federal",,drop=FALSE]
+        federal_rebate <- as.numeric(rebate_info_federal[1,"Maximum.amount"])
+        federal_max_msrp <- as.numeric(rebate_info_federal[1,"If.MSRP.below..."])
+
+        region_info_rebate <- rebate_table[rebate_table[,"Region"]==region_long,,drop=FALSE]
+        region_rebate <- as.numeric(region_info_rebate[1,"Maximum.amount"])
+        region_max_msrp <- as.numeric(region_info_rebate[1,"If.MSRP.below..."])
+
+        # if rebate not specified (i.e. NA), set rebate to 0
+        if(is.na(federal_rebate)) federal_rebate <- 0
+        if(is.na(region_rebate)) region_rebate <- 0
+
+        # if max amount not specified (i.e. NA), set max eligible MSRP to Infinite
+        # if(is.na(federal_max_msrp)) federal_max_msrp <- Inf
+        if(is.na(region_max_msrp)) region_max_msrp <- Inf
+
+        generalModelData$federal_rebate <- federal_rebate
+        generalModelData$federal_max_msrp <- federal_max_msrp
+
+        generalModelData$region_rebate <- region_rebate
+        generalModelData$region_max_msrp <- region_max_msrp
+        generalModelData$region <- region
+
+        if(verbose) print(paste0("Federal/Regional rebate: ", generalModelData$federal_rebate, "/", generalModelData$region_rebate))
+
+        ############## Get utility rates
+        tax_table <- dataTables$taxes
+        federal_tax <- as.numeric(tax_table["Federal",1])
+        region_tax <- as.numeric(tax_table[region,1])
+        total_tax <- sum(c(federal_tax, region_tax), na.rm=TRUE)
+        gas_rate  <- as.numeric(dataTables$gas[region,1])
+        electricity_rate <- as.numeric(dataTables$electricity[region,1])                
+
+        generalModelData$tax <- total_tax
+        generalModelData$gas_rate <- gas_rate
+        generalModelData$electricity_rate <- electricity_rate
+
+        if(verbose) print(paste0("Tax/Gas/Electricity rates: ", generalModelData$tax, "/", generalModelData$gas_rate, "/", generalModelData$electricity_rate))
+    })
+
+
 ######### Display rebate info
 
     output$rebate_info <- renderUI({
     	rebates <- dataTables$rebates
-        if(is.null(input$country) | identical(input$country,"")){
-            HTML('<p style="font-size:20px;"><b>Select your country to see how much you can save on the purchase of a new Battery Electric Vehicles (BEV).</b></p>')
-        } else if(( is.null(input$region) | identical(input$region,'') ) & countrySpecificData$is_federation){
-            HTML('<p style="font-size:20px;"><b>Select your ',countrySpecificData$names_for_regions,' to see how much you can save on the purchase of a new Battery Electric Vehicles (BEV).</b></p>')
+        print(input$region)
+        print(userInfo$region)
+        if(( is.null(input$region) | identical(input$region,'') )){
+            HTML('<p style="font-size:20px;"><b>Please provide your user info to see how much you can save on the purchase of a new Battery Electric Vehicles (BEV).</b></p>')
         } else {
-    		country_wide_rebate <- generalModelData$country_wide_rebate
-    		federal_msrp <- generalModelData$country_wide_max_msrp
+    		federal_rebate <- generalModelData$federal_rebate
+    		federal_max_msrp <- generalModelData$federal_max_msrp
     		region_rebate <- generalModelData$region_rebate
-    		region_msrp <- generalModelData$region_max_msrp
-    		
-            if(verbose){
-                print(paste0("Country wide rebate: ", country_wide_rebate))
-                print(paste0("Regional rebate: ", region_rebate))
-            }
+    		region_max_msrp <- generalModelData$region_max_msrp
 
-    		country_wide_rebate_text <- ifelse(country_wide_rebate>0,
-    		                              paste0("Up to ",country_wide_rebate,"$"),
+    		federal_rebate_text <- ifelse(federal_rebate>0,
+    		                              paste0("Up to ",federal_rebate,"$"),
     		                              "No rebate.")
     		region_rebate_text <- ifelse(region_rebate>0,
     		                             paste0("Up to ",region_rebate,"$"),
     		                             "No rebate.")
-    		federal_msrp_text <- ifelse(federal_msrp<Inf,
-                              		  paste0(" on BEVs below $",federal_msrp,"."),
+    		federal_msrp_text <- ifelse(federal_max_msrp<Inf,
+                              		  paste0(" on BEVs below $",federal_max_msrp,"."),
                               		  "")
-    		region_msrp_text <- ifelse(region_msrp<Inf,
-    	                              paste0(" on BEVs below $",region_msrp,"."),
+    		region_msrp_text <- ifelse(region_max_msrp<Inf,
+    	                              paste0(" on BEVs below $",region_max_msrp,"."),
     	                              "")
 
             if(countrySpecificData$is_federation){
-                rebate_max_text <- paste0('<p style="font-size:20px;"><b>','You can benefit from up to <span style="background-color: #FFFF00">', paste0(sum(country_wide_rebate, region_rebate, na.rm=TRUE), countrySpecificData$currency_symbol) ,'</span> on the purchase of a new Battery Electric Vehicle (BEV).','</b></p>')
-                rebate_federal_text <- paste0('<p style="font-size:14px;"><b>','Federal Rebate: </b>',country_wide_rebate_text, federal_msrp_text,'</p>')
+                rebate_max_text <- paste0('<p style="font-size:20px;"><b>','You can benefit from up to <span style="background-color: #FFFF00">', paste0(sum(federal_rebate, region_rebate, na.rm=TRUE), countrySpecificData$currency_symbol) ,'</span> on the purchase of a new Battery Electric Vehicle (BEV).','</b></p>')
+                rebate_federal_text <- paste0('<p style="font-size:14px;"><b>','Federal Rebate: </b>',federal_rebate_text, federal_msrp_text,'</p>')
                 rebate_region_text <- paste0('<p style="font-size:14px;"><b>',generalModelData$region,' Rebate: </b>',region_rebate_text, region_msrp_text,'</p><br>')
             } else {
-                rebate_max_text <- paste0('<p style="font-size:20px;"><b>','You can benefit from up to <span style="background-color: #FFFF00">', paste0(country_wide_rebate, countrySpecificData$currency_symbol) ,'</span> on the purchase of a new Battery Electric Vehicle (BEV).','</b></p>')
+                rebate_max_text <- paste0('<p style="font-size:20px;"><b>','You can benefit from up to <span style="background-color: #FFFF00">', paste0(region_rebate, countrySpecificData$currency_symbol) ,'</span> on the purchase of a new Battery Electric Vehicle (BEV).','</b></p>')
                  rebate_federal_text <- rebate_region_text <- NULL
             }
 
@@ -383,14 +405,14 @@ server <- function(input, output, session) {
 
         ########## Calculate price after rebate
    
-        vehicle_country_wide_rebate <- ifelse(car_list[,"MSRP"]<=generalModelData$country_wide_max_msrp & car_list$Engine=="BEV", generalModelData$country_wide_rebate ,0)
+        vehicle_federal_rebate <- ifelse(car_list[,"MSRP"]<=generalModelData$federal_max_msrp & car_list$Engine=="BEV", generalModelData$federal_rebate ,0)
         if(countrySpecificData$is_federation){
             vehicle_region_rebate <- ifelse(car_list[,"MSRP"]<=generalModelData$region_max_msrp & car_list$Engine=="BEV", generalModelData$region_rebate ,0)
         } else {
             vehicle_region_rebate <- rep(0, nrow(car_list))
         }
 
-        car_list$eligible_rebate <- vehicle_country_wide_rebate + vehicle_region_rebate
+        car_list$eligible_rebate <- vehicle_federal_rebate + vehicle_region_rebate
         car_list$after_rebates <- round(car_list$after_tax_and_fees - car_list$eligible_rebate,2)
 
         # rename columns
@@ -527,7 +549,7 @@ server <- function(input, output, session) {
             engine <- dataTables$car_data[car_long_name,"Engine"]
             msrp <- dataTables$car_data[car_long_name,"MSRP"]
             if(identical(engine, "BEV")){
-                rebates <- ifelse(msrp <= generalModelData$country_wide_max_msrp | is.na(generalModelData$country_wide_max_msrp), generalModelData$country_wide_rebate, 0) + ifelse(msrp <= generalModelData$region_max_msrp  | is.na(generalModelData$region_max_msrp),  generalModelData$region_rebate, 0)
+                rebates <- ifelse(msrp <= generalModelData$federal_max_msrp | is.na(generalModelData$federal_max_msrp), generalModelData$federal_rebate, 0) + ifelse(msrp <= generalModelData$region_max_msrp  | is.na(generalModelData$region_max_msrp),  generalModelData$region_rebate, 0)
             } else {
                 rebates <- 0
             }
@@ -551,7 +573,7 @@ server <- function(input, output, session) {
             engine <- dataTables$car_data[car_long_name,"Engine"]
             msrp <- dataTables$car_data[car_long_name,"MSRP"]
             if(identical(engine, "BEV")){
-                rebates <- ifelse(msrp <= generalModelData$country_wide_max_msrp | is.na(generalModelData$country_wide_max_msrp), generalModelData$country_wide_rebate, 0) + ifelse(msrp <= generalModelData$region_max_msrp  | is.na(generalModelData$region_max_msrp),  generalModelData$region_rebate, 0)
+                rebates <- ifelse(msrp <= generalModelData$federal_max_msrp | is.na(generalModelData$federal_max_msrp), generalModelData$federal_rebate, 0) + ifelse(msrp <= generalModelData$region_max_msrp  | is.na(generalModelData$region_max_msrp),  generalModelData$region_rebate, 0)
             } else {
                 rebates <- 0
             }
@@ -575,7 +597,7 @@ server <- function(input, output, session) {
             engine <- dataTables$car_data[car_long_name,"Engine"]
             msrp <- dataTables$car_data[car_long_name,"MSRP"]
             if(identical(engine, "BEV")){
-                rebates <- ifelse(msrp <= generalModelData$country_wide_max_msrp | is.na(generalModelData$country_wide_max_msrp), generalModelData$country_wide_rebate, 0) + ifelse(msrp <= generalModelData$region_max_msrp  | is.na(generalModelData$region_max_msrp),  generalModelData$region_rebate, 0)
+                rebates <- ifelse(msrp <= generalModelData$federal_max_msrp | is.na(generalModelData$federal_max_msrp), generalModelData$federal_rebate, 0) + ifelse(msrp <= generalModelData$region_max_msrp  | is.na(generalModelData$region_max_msrp),  generalModelData$region_rebate, 0)
             } else {
                 rebates <- 0
             }
@@ -599,7 +621,7 @@ server <- function(input, output, session) {
             engine <- dataTables$car_data[car_long_name,"Engine"]
             msrp <- dataTables$car_data[car_long_name,"MSRP"]
             if(identical(engine, "BEV")){
-                rebates <- ifelse(msrp <= generalModelData$country_wide_max_msrp | is.na(generalModelData$country_wide_max_msrp), generalModelData$country_wide_rebate, 0) + ifelse(msrp <= generalModelData$region_max_msrp  | is.na(generalModelData$region_max_msrp),  generalModelData$region_rebate, 0)
+                rebates <- ifelse(msrp <= generalModelData$federal_max_msrp | is.na(generalModelData$federal_max_msrp), generalModelData$federal_rebate, 0) + ifelse(msrp <= generalModelData$region_max_msrp  | is.na(generalModelData$region_max_msrp),  generalModelData$region_rebate, 0)
             } else {
                 rebates <- 0
             }
@@ -623,7 +645,7 @@ server <- function(input, output, session) {
             engine <- dataTables$car_data[car_long_name,"Engine"]
             msrp <- dataTables$car_data[car_long_name,"MSRP"]
             if(identical(engine, "BEV")){
-                rebates <- ifelse(msrp <= generalModelData$country_wide_max_msrp | is.na(generalModelData$country_wide_max_msrp), generalModelData$country_wide_rebate, 0) + ifelse(msrp <= generalModelData$region_max_msrp  | is.na(generalModelData$region_max_msrp),  generalModelData$region_rebate, 0)
+                rebates <- ifelse(msrp <= generalModelData$federal_max_msrp | is.na(generalModelData$federal_max_msrp), generalModelData$federal_rebate, 0) + ifelse(msrp <= generalModelData$region_max_msrp  | is.na(generalModelData$region_max_msrp),  generalModelData$region_rebate, 0)
             } else {
                 rebates <- 0
             }
