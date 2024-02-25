@@ -345,8 +345,7 @@ server <- function(input, output, session) {
 
     output$rebate_info <- renderUI({
     	rebates <- dataTables$rebates
-        print(input$region)
-        print(userInfo$region)
+
         if(( is.null(input$region) | identical(input$region,'') )){
             HTML('<p style="font-size:20px;"><b>Please provide your user info to see how much you can save on the purchase of a new Battery Electric Vehicles (BEV).</b></p>')
         } else {
@@ -386,12 +385,14 @@ server <- function(input, output, session) {
 ##############################################################
 
     output$car_table <- renderDataTable({
-        req(userInfo$country)
-    	car_list <- dataTables$car_data
-        validate(need(nrow(car_list)>0, "Select a country first!"))
+        req(input$region)
 
-        remove_columns <- c("Traction","Range (km)", "AC Charging rate (kW)", "DC Fast Charging rate (kW)","HP")
+        ########## format table
+    	car_list <- dataTables$car_data
+        remove_columns <- c("Traction","Range..km.", "AC.Charging.rate..kw.", "DC.Fast.Charging.rate..kW.", "HP")
     	car_list <- car_list[,-which(colnames(car_list) %in% remove_columns)]
+        colnames(car_list) <- c("Make","Model", "Trim", "Engine", "MSRP", "Link")
+        rownames(car_list) <- paste(car_list$Make, car_list$Model, car_list$Trim)
 
         ########## Calculate price after delivery fees and tax (if not included in MSRP)
     	car_list$delivery_fees <- sapply(car_list$Make, function(x){dataTables$delivery_fees[x,1]})

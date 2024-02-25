@@ -21,7 +21,6 @@ ui <- fluidPage(
         actionButton("walkthroughBtn", label="Interactive Walkthrough", icon.library="font awesome",css.class='sc-button'),
         uiOutput("user_countryUI"),
         uiOutput("user_regionUI"),
-        uiOutput("user_region_specificUI"),
         uiOutput("user_kms_yearsUI"),
         div(style = "height:20px"),
         uiOutput("rebate_info")
@@ -39,8 +38,8 @@ ui <- fluidPage(
                 #CAR LIST
                 ############################
                 tabPanel("Car Overview",value="car_list_tab", 
-                    HTML("<h4>This app primarily focuses on affordable Battery Electric Vehicles (BEVs). A few Internal Combustion Engine (ICE) vehicles have been included to the list for comparison. <br>
-                        <i>Car prices are given for reference only and might not reflect current pricing. You can change the price in the Comparator to reflect the latest pricing.</i></h4>"),
+                    HTML("<h4>Here is a list of selected BEV and ICE vehicles that are available for comparison.<br>
+                        <i>Car prices are given for reference only and might not reflect current pricing. But don't worry, you can update the price in the Comparator options.</i></h4>"),
                     dataTableOutput("car_table")
                 ), 
 
