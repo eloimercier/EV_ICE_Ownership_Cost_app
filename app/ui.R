@@ -39,7 +39,8 @@ ui <- fluidPage(
                 #CAR LIST
                 ############################
                 tabPanel("Car Overview",value="car_list_tab", 
-                    h3("Car prices are given for reference only and might not reflect current pricing.              focuses on affordable Battery Electric Vehicles (BEVs) available in Canada. It is not meant to encompass all EVs on the market. A few Internal Combustion Engine (ICE) vehicles have been included to the list for comparison.<br><br>"),
+                    HTML("<h4>This app primarily focuses on affordable Battery Electric Vehicles (BEVs). A few Internal Combustion Engine (ICE) vehicles have been included to the list for comparison. <br>
+                        <i>Car prices are given for reference only and might not reflect current pricing. You can change the price in the Comparator to reflect the latest pricing.</i></h4>"),
                     dataTableOutput("car_table")
                 ), 
 

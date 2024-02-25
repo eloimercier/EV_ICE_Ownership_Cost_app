@@ -122,24 +122,6 @@ server <- function(input, output, session) {
 
     })
 
-##############################################################
-######################### APP INFO ##########################
-##############################################################
-
-    observeEvent(input$info, {
-        version <- read.table("VERSION")[1,1]
-        shinyalert("EV Comparator App", HTML(paste0(version,"<br><br>
-            This document focuses on affordable Battery Electric Vehicles (BEVs) available in Canada. It is not meant to encompass all EVs on the market. A few Internal Combustion Engine (ICE) vehicles have been included to the list for comparison.<br><br>
-            <i>The information in this document are provided for information only with no guarantee of accuracy</i>")), type = "info", html=TRUE) 
-    })
-
-    output$githubLink <- renderUI({
-        #link to github page
-        tags$li(class = "dropdown",
-          tags$a(img(src="https://img.icons8.com/?size=512&id=62856&format=png",  width="48", height="48"), href="https://github.com/eloimercier/EV_app")
-        )
-    })
-        
 
 ##############################################################
 ######################### USER INFO ##########################
@@ -384,7 +366,8 @@ server <- function(input, output, session) {
     	car_list <- dataTables$car_data
         validate(need(nrow(car_list)>0, "Select a country first!"))
 
-    	car_list <- car_list[,-which(colnames(car_list)=="Link")]
+        remove_columns <- c("Traction","Range (km)", "AC Charging rate (kW)", "DC Fast Charging rate (kW)","HP")
+    	car_list <- car_list[,-which(colnames(car_list) %in% remove_columns)]
 
         ########## Calculate price after delivery fees and tax (if not included in MSRP)
     	car_list$delivery_fees <- sapply(car_list$Make, function(x){dataTables$delivery_fees[x,1]})
@@ -412,16 +395,18 @@ server <- function(input, output, session) {
         msrp_colname <- paste0("MSRP (", countrySpecificData$currency_name,")")
         purchase_price_colname <- paste0("Purchase Price (", countrySpecificData$currency_name,")")
         # region_rebate_colname <- paste0(generalModelData$region," rebate")
-        range_colname <- paste0("Range (",countrySpecificData$distance,")")
-    	colnames(car_list) <- c("Make", "Model", "Trim", "Engine", msrp_colname, "Traction", range_colname, "AC Charging rate (kw)", "DC Fast Charging rate (kW)", "HP", "Delivery Fees", "Price after Tax & Fees", "Eligible rebate", purchase_price_colname)
+    	colnames(car_list) <- c("Make", "Model", "Trim", "Engine", msrp_colname, "Link", "Delivery Fees", "Price after Tax & Fees", "Eligible rebate", purchase_price_colname)
         # reorder table
-        car_list <- car_list[,c("Make", "Model", "Trim", "Engine", msrp_colname,  "Delivery Fees", "Price after Tax & Fees", "Eligible rebate", purchase_price_colname, "Traction", range_colname, "AC Charging rate (kw)", "DC Fast Charging rate (kW)", "HP")] 
+        car_list <- car_list[,c("Make", "Model", "Trim", "Engine", msrp_colname,  "Delivery Fees", "Price after Tax & Fees", "Eligible rebate", purchase_price_colname, "Link")] 
         car_list <- car_list[order(car_list[,purchase_price_colname],decreasing = FALSE),]
-        hide_columns <- which(colnames(car_list) %in% c("Delivery Fees", "Price after Tax & Fees", "Eligible rebate", "Traction", "AC Charging rate (kw)")) - 1 #columns hidden by default, 0-based
+        hide_columns <- which(colnames(car_list) %in% c("Delivery Fees", "Price after Tax & Fees", "Eligible rebate")) - 1 #columns hidden by default, 0-based
 
         #create factors for better filtering options
-        col_names_to_convert <- c("Make", "Engine", "Traction")
+        col_names_to_convert <- c("Make", "Engine")
         car_list[col_names_to_convert] <- lapply(car_list[col_names_to_convert] , factor)
+
+        #make clickable links
+        car_list$Link <- sprintf('<a href="%s" class="btn btn-primary">Link</a>',car_list$Link) 
 
         #create column mouseover info
         mouseover_info = htmltools::withTags(table(
@@ -437,17 +422,13 @@ server <- function(input, output, session) {
                 th('Price after Tax & Fees', title = 'Price accounting for delivery fees and tax'),
                 th('Eligible Rebate', title = 'Combined amount of all eligible rebates'),
                 th(purchase_price_colname, title = 'Final price after rebates'),
-                th('Traction', title = 'Car drivetrain'),
-                th(range_colname, title = 'Distance on a full charge'),
-                th('AC Charging rate (kw)', title = 'AC Charging rate (kw)'),
-                th('DC Fast Charging rate (kW)', title = 'DC Fast Charging rate (kW)'),
-                th('HP', title = 'Horsepower')
+                th("Link", title = "Link to manufacturer's page")
             )
           )
         ))
 
     	DT::datatable(car_list, filter = list(position = 'top'),selection = 'single', rownames=FALSE, extensions = 'Buttons', container = mouseover_info, 
-             options = list(pageLength = 20, lengthMenu = c(10, 20, 50, 100), dom = 'Bfrtlip', buttons = I('colvis'), columnDefs = list(list(targets = hide_columns, visible = FALSE)))) %>% 
+             options = list(pageLength = 20, lengthMenu = c(10, 20, 50, 100), dom = 'Bfrtlip', buttons = I('colvis'), columnDefs = list(list(targets = hide_columns, visible = FALSE))), escape = FALSE) %>% 
                  formatStyle(msrp_colname, background = styleColorBar(car_list[,msrp_colname], rgb(0,0.8,0,0.3)),  backgroundSize = '98% 88%',   backgroundRepeat = 'no-repeat',  backgroundPosition = 'left') %>% 
                  formatStyle(purchase_price_colname, background = styleColorBar(car_list[,purchase_price_colname], rgb(0,0.8,0,0.3)),  backgroundSize = '98% 88%',   backgroundRepeat = 'no-repeat',  backgroundPosition = 'left')	
     })
