@@ -4,7 +4,6 @@ server <- function(input, output, session) {
   verbose <- TRUE
   
 #TODO:
-#remaining value at X years
 #add time car list was last updated
 #conversion to imperial units
 #finish walkthrough
@@ -359,7 +358,7 @@ server <- function(input, output, session) {
         car_list <- dataTables$car_data
         new_car <- data.frame("Make"=input$new_make, "Model"=input$new_model, "Trim"=input$new_trim, "Engine"=input$new_engine, "MSRP"=input$new_MSRP, "Link"=NA )
         colnames(new_car) <- colnames(car_list)
-        if(verbose) print(paste0("Adding new car: ",new_car))
+        if(verbose) {print("Adding new car:"); print(new_car)}
 
         new_car_list <- rbind(new_car, car_list)
         dataTables$car_data <- new_car_list
@@ -588,7 +587,7 @@ server <- function(input, output, session) {
 
 #### UPDATE SELECTION #### 
 
-    observeEvent(c(input$region, input$yearly_distance, input$make1, input$model1, input$trim1),{
+    observeEvent(c(input$region, input$yearly_distance, input$keep_years, input$make1, input$model1, input$trim1),{
         req(input$region, input$trim1)
         if(!is.null(input$region) & !is.null(input$trim1) & !identical(input$trim1,"")){
             car_long_name <- paste(input$make1, input$model1, input$trim1)
@@ -613,7 +612,7 @@ server <- function(input, output, session) {
         }
     })
 
-    observeEvent(c(input$region, input$yearly_distance, input$make2, input$model2, input$trim2),{
+    observeEvent(c(input$region, input$yearly_distance, input$keep_years, input$make2, input$model2, input$trim2),{
         if(!is.null(input$region) & !is.null(input$trim2) & !identical(input$trim2,"")){
             car_long_name <- paste(input$make2, input$model2, input$trim2)
             engine <- dataTables$car_data[car_long_name,"Engine"]
@@ -637,7 +636,7 @@ server <- function(input, output, session) {
         }
     })
 
-    observeEvent(c(input$region, input$yearly_distance, input$make3, input$model3, input$trim3),{
+    observeEvent(c(input$region, input$yearly_distance, input$keep_years, input$make3, input$model3, input$trim3),{
         if(!is.null(input$region) & !is.null(input$trim3) & !identical(input$trim3,"")){
             car_long_name <- paste(input$make3, input$model3, input$trim3)
             engine <- dataTables$car_data[car_long_name,"Engine"]
@@ -661,7 +660,7 @@ server <- function(input, output, session) {
         }
     })
 
-    observeEvent(c(input$region, input$yearly_distance, input$make4, input$model4, input$trim4),{
+    observeEvent(c(input$region, input$yearly_distance, input$keep_years, input$make4, input$model4, input$trim4),{
         if(!is.null(input$region) & !is.null(input$trim4) & !identical(input$trim4,"")){
             car_long_name <- paste(input$make4, input$model4, input$trim4)
             engine <- dataTables$car_data[car_long_name,"Engine"]
@@ -685,7 +684,7 @@ server <- function(input, output, session) {
         }
     })
 
-    observeEvent(c(input$region, input$yearly_distance, input$make5, input$model5, input$trim5),{
+    observeEvent(c(input$region, input$yearly_distance, input$keep_years, input$make5, input$model5, input$trim5),{
         if(!is.null(input$region) & !is.null(input$trim5) & !identical(input$trim5,"")){
             car_long_name <- paste(input$make5, input$model5, input$trim5)
             engine <- dataTables$car_data[car_long_name,"Engine"]
@@ -702,7 +701,7 @@ server <- function(input, output, session) {
             fuel_increase <- ifelse(engine=="BEV", generalModelData$electricity_increase, generalModelData$gas_increase) 
             maintenance <- ifelse(engine=="BEV", generalModelData$bev_maintenance, generalModelData$ice_maintenance)
             depreciation_rate <- calculate_depreciation_from_10year_rate (generalModelData$depreciation_value_10year)
-            depreciation_x_years <- calculate_depreciation_n_years(depreciation_rate, input$keep_years)
+            depreciation_x_years <- round(calculate_depreciation_n_years(depreciation_rate, input$keep_years),2)
             carSelection$car5 <- list(name=car_long_name, MSRP=msrp, rebates=rebates, purchase_price=purchase_price, engine=engine, efficiency=efficiency, fuel_rate=fuel_rate, fuel_increase=fuel_increase, maintenance=maintenance, yearly_distance=input$yearly_distance, depreciation_x_years=depreciation_x_years)
         } else {
              carSelection$car5 <- car_ini
@@ -809,7 +808,7 @@ server <- function(input, output, session) {
 
         if(!all(is.na(car_selected_table[1,-1]))){ #prevent generation of the table before cars have been selected - e.g. when running walkthrough
             not_editable_cols <- which(sapply(c(input$trim1,input$trim2, input$trim3, input$trim4, input$trim5), function(x){identical(x,"")}, USE.NAMES=F)) #columns without a selection should not be editable
-            car_selected_table$Tips <- c("Purchase price after accounting for MSRP, delivery fees, taxes and rebates", "The distance you drive in a year", "The car efficiency i.e. how much electricity or gas it uses", "Cost of electricty or gas in your area", "An estimation of the yearly electricity or gas increase", "Estimated yearly maintenance cost", "% of MSRP remaining at the end of the period")
+            car_selected_table$Tips <- c("Purchase price after accounting for MSRP, delivery fees, taxes and rebates", "The distance you drive in a year", "The car efficiency i.e. how much electricity or gas it uses", "Cost of electricty or gas in your area", "An estimation of the yearly electricity or gas increase", "Estimated yearly maintenance cost", "% of MSRP remaining at the end of the period. Calculated as (1-depreciation_rate)^nyears.")
             datatable(car_selected_table, colnames = rep("", ncol(car_selected_table)), rownames=FALSE,
                     selection = list(mode = 'single', target = 'column', selectable = c(-1)),
                     editable = list(target = "cell", disable = list(columns = c(0, not_editable_cols))),

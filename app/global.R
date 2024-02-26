@@ -25,7 +25,7 @@ calculate_depreciation_from_10year_rate <- function(depreciation_10_years, n_yea
 calculate_depreciation_n_years <- function(depreciation_rate, n_years){
 	#e.g. depreciation rate is 0.13; after 10 years the remaining resale % o the MSRP is (1-0.13)^10=0.25
 	y <- (1-depreciation_rate/100) ^ n_years
-	y * 100 #as a percentage
+	round(y * 100,2) #as a percentage
 }
 
 compute_ownership_cost <- function(purchase_price, kms, kept_years, fuel_per_100km, fuel_rate, fuel_increase, maintenance){
