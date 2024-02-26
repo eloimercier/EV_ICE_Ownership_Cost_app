@@ -184,8 +184,12 @@ server <- function(input, output, session) {
         dataTables$gas <- read.xlsx(country_file, sheet="Gas", rowNames = TRUE)
         dataTables$electricity <- read.xlsx(country_file, sheet="Electricity", rowNames = TRUE)
         dataTables$delivery_fees <- read.xlsx(country_file, sheet="Fees", rowNames = TRUE)
-        dataTables$car_data <- read.xlsx(country_file, sheet="Cars", check.names = TRUE)
         dataTables$rebates <- read.xlsx(country_file, sheet="Rebates")
+
+        car_data <- read.xlsx(country_file, sheet="Cars", check.names = TRUE)
+        remove_columns <- c("Traction","Range..km.", "AC.Charging.rate..kw.", "DC.Fast.Charging.rate..kW.", "HP")
+        car_data <- car_data[,-which(colnames(car_data) %in% remove_columns)]
+        dataTables$car_data <- car_data
 
         #set up country specific parameters
         country_info <- countryInfo[[input$country]]
@@ -384,15 +388,41 @@ server <- function(input, output, session) {
 ######################### CAR LIST ##########################
 ##############################################################
 
+    observeEvent(input$add_new_data_btn, {
+        showModal(
+            modalDialog(
+                title = "Enter new car info",
+                tagList(
+                    textInput("new_make", "Make"),
+                    textInput("new_model", "Model"),
+                    textInput("new_trim", "Trim"),
+                    numericInput("new_MSRP", "MSRP (inc. delivery fees)",value=50000, min=0, max=200000, step=1000),
+                    selectizeInput("new_engine", "Engine", choices=c("BEV", "ICE")),
+                    actionButton("add_car_btn", "Add")       
+                )
+            )
+        )
+    })
+
+
+  observeEvent(input$add_car_btn, {
+    car_list <- dataTables$car_data
+    new_car <- data.frame("Make"=input$new_make, "Model"=input$new_model, "Trim"=input$new_trim, "Engine"=input$new_engine, "MSRP"=input$new_MSRP, "Link"=NA )
+    colnames(new_car) <- colnames(car_list)
+    if(verbose) print(paste0("Adding new car: ",new_car))
+
+    new_car_list <- rbind(new_car, car_list)
+    dataTables$car_data <- new_car_list
+  })
+
+
     output$car_table <- renderDataTable({
         req(input$region)
 
         ########## format table
     	car_list <- dataTables$car_data
-        remove_columns <- c("Traction","Range..km.", "AC.Charging.rate..kw.", "DC.Fast.Charging.rate..kW.", "HP")
-    	car_list <- car_list[,-which(colnames(car_list) %in% remove_columns)]
         colnames(car_list) <- c("Make","Model", "Trim", "Engine", "MSRP", "Link")
-        rownames(car_list) <- paste(car_list$Make, car_list$Model, car_list$Trim)
+        rownames(car_list) <- make.unique(paste(car_list$Make, car_list$Model, car_list$Trim))
 
         ########## Calculate price after delivery fees and tax (if not included in MSRP)
     	car_list$delivery_fees <- sapply(car_list$Make, function(x){dataTables$delivery_fees[x,1]})
@@ -945,7 +975,6 @@ server <- function(input, output, session) {
 
     purchase_price_plot <- reactive({
         df <- comparisonData$final_cost[c("Purchase Price"),,drop=FALSE]
-DF <<- df        
         colnames(df) <- make.unique(colnames(df))
         df_long <- melt(as.matrix(df[,-which(colnames(df)=="Breakdown")]), na.rm=T , varnames="Breakdown")
         colnames(df_long) <- c("Breakdown", "Model", "Cost")
@@ -1021,15 +1050,10 @@ DF <<- df
             gp0 <- ggplotly(p0, height=800, tooltip = "text")
             gp1 <- ggplotly(p1, height=800, tooltip = "text")
             gp2 <- ggplotly(p2, height=800, tooltip = "text")
-GP1 <<- gp1
-GP2 <<- gp2
-GP0 <<- gp0
             sp <- subplot(gp0, gp1,gp2, widths = c(0.15,0.7,0.15), shareY = T, margin=0)
-SP <<- sp
 
             #FORMAT THE LEGEND NICELY:
             df_long2 <- p1$data
-DFLONG2 <<- df_long2            
             #create minimal datasets to force legend display
             model.df <- data.frame(Year=-1, Cost=0, Model=unique(df_long2$Model), color=gg_color_hue(length(unique(df_long2$Model))))
             breakdown.df <- data.frame(Year=-1, Cost=0, Breakdown=c("Purchase Price","Resale Value", "Depreciation Cost", "Operational Cost"), color=c(rgb(0,0.3,0.9,1), rgb(0,0.5,1,0.2), rgb(0,0.2,0.5,1), rgb(0.9,0.1,0.1,1)))

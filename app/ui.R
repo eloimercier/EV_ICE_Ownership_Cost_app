@@ -40,6 +40,7 @@ ui <- fluidPage(
                 tabPanel("Car Overview",value="car_list_tab", 
                     HTML("<h4>Here is a list of selected BEV and ICE vehicles that are available for comparison.<br>
                         <i>Car prices are given for reference only and might not reflect current pricing. But don't worry, you can update the price in the Comparator options.</i></h4>"),
+                    actionButton("add_new_data_btn", "Add new car"),        
                     dataTableOutput("car_table")
                 ), 
 
