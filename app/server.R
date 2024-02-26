@@ -3,6 +3,12 @@ server <- function(input, output, session) {
 
   verbose <- TRUE
   
+#TODO:
+#remaining value at X years
+#add time car list was last updated
+#conversion to imperial units
+#finish walkthrough
+#simplified duplicated chunks of code
 
 ##############################################################
 ######################### WELCOME ############################
@@ -215,86 +221,6 @@ server <- function(input, output, session) {
         generalModelData$bev_maintenance <- country_info$bev_maintenance
 
     })
-
-
-
-    # observeEvent(input$country,{
-    #     req(input$country)
-
-    #     if(verbose) print("*********************")
-    #     if(verbose) print("Setting up country parameters")
-
-    #     generalModelData$region <- generalModelData$country #set region = country by default
-
-    #     #set up country specific parameters
-    #     country_info <- countryInfo[[input$country]]
-    #     for (i in 1:length(country_info)){
-    #         var <- names(country_info)[i]
-    #         countrySpecificData[[var]] <- country_info[[var]]
-    #     }
-    #     generalModelData$ice_maintenance <- country_info$ice_maintenance
-    #     generalModelData$bev_maintenance <- country_info$bev_maintenance
-
-    #     #read specific spreadsheet
-    #     country_file <- paste0("data/EV_list_",input$country,".xlsx")
-    #     dataTables$rebates <- read.xlsx(country_file, sheet="Rebates")
-    #     dataTables$taxes <- read.xlsx(country_file, sheet="Taxes", rowNames = TRUE)
-    #     dataTables$gas <- read.xlsx(country_file, sheet="Gas", rowNames = TRUE)
-    #     dataTables$electricity <- read.xlsx(country_file, sheet="Electricity", rowNames = TRUE)
-    #     dataTables$delivery_fees <- read.xlsx(country_file, sheet="Fees", rowNames = TRUE)
-
-    #     #read car data
-    #     car_data <- read.xlsx(country_file, sheet="Cars", check.names = TRUE)
-    #     rownames(car_data) <- paste(car_data$Make, car_data$Model, car_data$Trim)
-    #     colnames(car_data) <- c("Make","Model", "Trim", "Engine", "MSRP", "Link", "Traction","Range (km)", "AC Charging rate (kW)", "DC Fast Charging rate (kW)","HP")
-    #     dataTables$car_data <- car_data
-
-    #     #read rebate table
-    #     dataTables$rebates <- read.xlsx(country_file, sheet="Rebates")
-
-    #     #set up region list
-    #     all_regions <- dataTables$rebates[,1]
-    #     if(countrySpecificData$is_federation){ #remove federal
-    #         all_regions <- all_regions[all_regions!="Federal"]
-    #     }
-    #     all_regions <- all_regions[-grep("Source", all_regions)] #remove source info
-    #     countrySpecificData$region_list <- unique(all_regions)
-
-    #     #set country wide rebate
-    #     tax_table <- dataTables$taxes
-    #     rebates_table <- dataTables$rebates
-
-    #     if(identical(countrySpecificData$is_federation, TRUE)){
-    #         generalModelData$federal_rebate <- as.numeric(rebates_table[rebates_table[,"Region"] == "Federal", "Maximum.amount"])
-    #         federal_max_msrp <- as.numeric(rebates_table[rebates_table[,"Region"] == "Federal", "If.MSRP.below..."])
-    #         if(is.na(federal_max_msrp)) federal_max_msrp <- Inf
-    #         generalModelData$federal_max_msrp <- federal_max_msrp
-    #         generalModelData$region_rebate <- 0 # we will set it up later
-    #         generalModelData$region_max_msrp <- 0 # we will set it up later
-    #         generalModelData$tax <- as.numeric(tax_table["Federal",1]) + 0 # we will add region tax later
-    #         generalModelData$gas_rate  <- 0 # we will set it up later
-    #         generalModelData$electricity_rate <- 0 # we will set it up later                  
-    #     } else {
-    #         generalModelData$federal_rebate <- as.numeric(rebates_table[rebates_table[,"Region"] == input$country,"Maximum.amount"])
-    #         federal_max_msrp <- as.numeric(rebates_table[rebates_table[,"Region"] == input$country,"If.MSRP.below..."])
-    #         if(is.na(federal_max_msrp)) federal_max_msrp <- Inf
-    #         generalModelData$federal_max_msrp <- federal_max_msrp
-    #         generalModelData$region_rebate <- 0
-    #         generalModelData$region_max_msrp <- 0 
-    #         generalModelData$tax <- as.numeric(tax_table[input$country,1])
-    #         generalModelData$gas_rate  <- as.numeric(dataTables$gas[input$country,1])
-    #         generalModelData$electricity_rate <- as.numeric(dataTables$electricity[input$country,1])
-    #         if(verbose) print(paste0("Tax/Gas/Electricity rates: ", generalModelData$tax, "/", generalModelData$gas_rate, "/", generalModelData$electricity_rate))
-    #     }
-    #     # } else {
-    #     #     #reset data
-    #     #     countrySpecificData$names_for_regions <- countrySpecificData$is_federation <- countrySpecificData$tax_included <- countrySpecificData$currency_name  <- countrySpecificData$currency_symbol <- countrySpecificData$currency_symbol_cent <- NA
-    #     #     countrySpecificData$distance <- countrySpecificData$gas_efficiency <- countrySpecificData$gas_rate <- countrySpecificData$electricity_efficiency <- countrySpecificData$electricity_rate <- countrySpecificData$region_list <- NA
-    #     #     generalModelData$region <- ""
-    #     #     dataTables$car_data=data.frame()
-    #     #     dataTables$rebates <- dataTables$taxes <- dataTables$gas <- dataTables$electricity <- dataTables$fees <- dataTables$delivery_fees <- NA
-    #     # }
-    # })
 
 
 ######### Setup region specific data and model parameters
@@ -615,7 +541,7 @@ server <- function(input, output, session) {
         req(input$region)
         column(12, 
             div(style = "height:20px"),
-            HTML("<i>The default variables are taken from the Parameter tables based on your ", countrySpecificData$names_for_regions,". Change the default variables in the table below.</i>"),
+            HTML(paste0("<i>The default variables are taken from the Parameter tables based on your ", countrySpecificData$names_for_regions,". Change the default variables in the table below.</i>")),
             bsCollapse(id = "model_variable_table_collapsible", open = NULL,
                 bsCollapsePanel("Parameters used to estimate cost of ownership <click here to edit>", value="model_variable_collapse",                    
                     HTML("<b>Double click on a cell to edit.</b>"),

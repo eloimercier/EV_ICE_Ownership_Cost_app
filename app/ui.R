@@ -8,7 +8,7 @@ ui <- fluidPage(
 ############################ LEFT PANEL ##########################
 ##############################################################
 
-    titlePanel("User Info"),
+    titlePanel("EV and ICE Ownership Cost"),
 
 
     sidebarLayout(
@@ -19,6 +19,7 @@ ui <- fluidPage(
 
     sidebarPanel(width=2,
         actionButton("walkthroughBtn", label="Interactive Walkthrough", icon.library="font awesome",css.class='sc-button'),
+        HTML("<h3>User info:</h3>"),
         uiOutput("user_countryUI"),
         uiOutput("user_regionUI"),
         uiOutput("user_kms_yearsUI"),
