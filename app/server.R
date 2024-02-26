@@ -615,10 +615,10 @@ server <- function(input, output, session) {
         req(input$region)
         column(12, 
             div(style = "height:20px"),
-            HTML("<b>Parameters used to estimate cost of ownership</b>"),
+            HTML("<i>The default variables are taken from the Parameter tables based on your ", countrySpecificData$names_for_regions,". Change the default variables in the table below.</i>"),
             bsCollapse(id = "model_variable_table_collapsible", open = NULL,
-                bsCollapsePanel("Model Variables  <click here to edit>", value="model_variable_collapse",
-                    uiOutput("model_variable_info"),
+                bsCollapsePanel("Parameters used to estimate cost of ownership <click here to edit>", value="model_variable_collapse",                    
+                    HTML("<b>Double click on a cell to edit.</b>"),
                     dataTableOutput("CarSelectedVariableTable"), 
                     style="info")
             ),
@@ -787,59 +787,94 @@ server <- function(input, output, session) {
 
 #### DISPLAY VARIABLE TABLE #### 
 
-    output$model_variable_info <- renderUI({
-        req(input$region)
-        HTML(paste0("<b>The default variables are taken from the Parameter tables based on your ", countrySpecificData$names_for_regions," and the type of vehicle. Double click on a cell to edit.</b>"))
+    observeEvent(c(input$make1, input$model1, input$trim1),{
+        #reset values if selected car changes
+        col <- 1 + 1
+        edited_col <- which(modelVariableTable$edited_j==col)
+        if(length(edited_col)>0){
+            if(verbose) print("remove edit col 1")
+            modelVariableTable$edited_i <- modelVariableTable$edited_i[-edited_col]
+            modelVariableTable$edited_j <- modelVariableTable$edited_j[-edited_col]
+            modelVariableTable$edited_value <- modelVariableTable$edited_value[-edited_col]
+        }
     })
+    observeEvent(c(input$make2, input$model2, input$trim2),{
+        #reset values if selected car changes
+        col <- 2 + 1
+        edited_col <- which(modelVariableTable$edited_j==col)
+        if(length(edited_col)>0){
+            if(verbose) print("remove edit col 2")
+            modelVariableTable$edited_i <- modelVariableTable$edited_i[-edited_col]
+            modelVariableTable$edited_j <- modelVariableTable$edited_j[-edited_col]
+            modelVariableTable$edited_value <- modelVariableTable$edited_value[-edited_col]
+        }
+    })
+    observeEvent(c(input$make3, input$model3, input$trim3),{
+        #reset values if selected car changes
+        col <- 3 + 1
+        edited_col <- which(modelVariableTable$edited_j==col)
+        if(length(edited_col)>0){
+            if(verbose) print("remove edit col 3")
+            modelVariableTable$edited_i <- modelVariableTable$edited_i[-edited_col]
+            modelVariableTable$edited_j <- modelVariableTable$edited_j[-edited_col]
+            modelVariableTable$edited_value <- modelVariableTable$edited_value[-edited_col]
+        }
+    })
+    observeEvent(c(input$make4, input$model4, input$trim4),{
+        #reset values if selected car changes
+        col <- 4 + 1
+        edited_col <- which(modelVariableTable$edited_j==col)
+        if(length(edited_col)>0){
+            if(verbose) print("remove edit col 4")
+            modelVariableTable$edited_i <- modelVariableTable$edited_i[-edited_col]
+            modelVariableTable$edited_j <- modelVariableTable$edited_j[-edited_col]
+            modelVariableTable$edited_value <- modelVariableTable$edited_value[-edited_col]
+        }
+    })
+    observeEvent(c(input$make5, input$model5, input$trim5),{
+        #reset values if selected car changes
+        col <- 5 + 1
+        edited_col <- which(modelVariableTable$edited_j==col)
+        if(length(edited_col)>0){
+            if(verbose) print("remove edit col 5")
+            modelVariableTable$edited_i <- modelVariableTable$edited_i[-edited_col]
+            modelVariableTable$edited_j <- modelVariableTable$edited_j[-edited_col]
+            modelVariableTable$edited_value <- modelVariableTable$edited_value[-edited_col]
+        }
+    })
+
 
     observe({
         req(input$yearly_distance)
-            #prepares the model variable table
-            c0 <-c( paste0("Purchase Price (",countrySpecificData$currency_name,")"), 
-                paste0(firstup(countrySpecificData$distance)," driven (yearly)"), 
-                paste0("Efficency (",countrySpecificData$gas_efficiency," or ", countrySpecificData$electricity_efficiency,")"), 
-                paste0("Fuel/energy rate (",countrySpecificData$gas_rate," or ", countrySpecificData$electricity_rate,")"), 
-                paste0("Yearly fuel/energy price increase (",countrySpecificData$currency_symbol_cent,")"), 
-                paste0("Yearly Maintenance (",countrySpecificData$currency_name,")"),
-                paste0("Remaining value at ", input$keep_years, " years (in % of MSRP)"))
-            c1 <- data.frame(c(carSelection$car1$purchase_price, carSelection$car1$yearly_distance, carSelection$car1$efficiency, carSelection$car1$fuel_rate, carSelection$car1$fuel_increase, carSelection$car1$maintenance, carSelection$car1$depreciation_x_years))
-            c2 <- data.frame(c(carSelection$car2$purchase_price, carSelection$car2$yearly_distance, carSelection$car2$efficiency, carSelection$car2$fuel_rate, carSelection$car2$fuel_increase, carSelection$car2$maintenance, carSelection$car2$depreciation_x_years))
-            c3 <- data.frame(c(carSelection$car3$purchase_price, carSelection$car3$yearly_distance, carSelection$car3$efficiency, carSelection$car3$fuel_rate, carSelection$car3$fuel_increase, carSelection$car3$maintenance, carSelection$car3$depreciation_x_years))
-            c4 <- data.frame(c(carSelection$car4$purchase_price, carSelection$car4$yearly_distance, carSelection$car4$efficiency, carSelection$car4$fuel_rate, carSelection$car4$fuel_increase, carSelection$car4$maintenance, carSelection$car4$depreciation_x_years))
-            c5 <- data.frame(c(carSelection$car5$purchase_price, carSelection$car5$yearly_distance, carSelection$car5$efficiency, carSelection$car5$fuel_rate, carSelection$car5$fuel_increase, carSelection$car5$maintenance, carSelection$car5$depreciation_x_years))
+        #prepares the model variable table
+        c0 <-c( paste0("Purchase Price (",countrySpecificData$currency_name,")"), 
+            paste0(firstup(countrySpecificData$distance)," driven (yearly)"), 
+            paste0("Efficency (",countrySpecificData$gas_efficiency," or ", countrySpecificData$electricity_efficiency,")"), 
+            paste0("Fuel/energy rate (",countrySpecificData$gas_rate," or ", countrySpecificData$electricity_rate,")"), 
+            paste0("Yearly fuel/energy price increase (",countrySpecificData$currency_symbol_cent,")"), 
+            paste0("Yearly Maintenance (",countrySpecificData$currency_name,")"),
+            paste0("Remaining value at ", input$keep_years, " years (in % of MSRP)"))
+        c1 <- data.frame(c(carSelection$car1$purchase_price, carSelection$car1$yearly_distance, carSelection$car1$efficiency, carSelection$car1$fuel_rate, carSelection$car1$fuel_increase, carSelection$car1$maintenance, carSelection$car1$depreciation_x_years))
+        c2 <- data.frame(c(carSelection$car2$purchase_price, carSelection$car2$yearly_distance, carSelection$car2$efficiency, carSelection$car2$fuel_rate, carSelection$car2$fuel_increase, carSelection$car2$maintenance, carSelection$car2$depreciation_x_years))
+        c3 <- data.frame(c(carSelection$car3$purchase_price, carSelection$car3$yearly_distance, carSelection$car3$efficiency, carSelection$car3$fuel_rate, carSelection$car3$fuel_increase, carSelection$car3$maintenance, carSelection$car3$depreciation_x_years))
+        c4 <- data.frame(c(carSelection$car4$purchase_price, carSelection$car4$yearly_distance, carSelection$car4$efficiency, carSelection$car4$fuel_rate, carSelection$car4$fuel_increase, carSelection$car4$maintenance, carSelection$car4$depreciation_x_years))
+        c5 <- data.frame(c(carSelection$car5$purchase_price, carSelection$car5$yearly_distance, carSelection$car5$efficiency, carSelection$car5$fuel_rate, carSelection$car5$fuel_increase, carSelection$car5$maintenance, carSelection$car5$depreciation_x_years))
 
-            car_selected_table <- data.frame(cbind(c0,c1,c2,c3,c4,c5))
-            colnames(car_selected_table) <- c("",carSelection$car1$name, carSelection$car2$name, carSelection$car3$name, carSelection$car4$name, carSelection$car5$name)
-            rownames(car_selected_table) <- c("purchase_price", "distance", "efficiency", "fuel_rate", "fuel_price_increase", "maintenance", "depreciation_x_years")
+        car_selected_table <- data.frame(cbind(c0,c1,c2,c3,c4,c5))
+        colnames(car_selected_table) <- c("",carSelection$car1$name, carSelection$car2$name, carSelection$car3$name, carSelection$car4$name, carSelection$car5$name)
+        rownames(car_selected_table) <- c("purchase_price", "distance", "efficiency", "fuel_rate", "fuel_price_increase", "maintenance", "depreciation_x_years")
 
-
-
-
-            #changed values that have been edited
-            if(all(!is.null(modelVariableTable$edited_value))){
-                for (k in seq_along(modelVariableTable$edited_value)){
-                    car_selected_table[modelVariableTable$edited_i[k], modelVariableTable$edited_j[k]] <- modelVariableTable$edited_value[k]
-                }
+        #changed values that have been edited
+        if(all(!is.null(modelVariableTable$edited_value))){
+            for (k in seq_along(modelVariableTable$edited_value)){
+                car_selected_table[modelVariableTable$edited_i[k], modelVariableTable$edited_j[k]] <- modelVariableTable$edited_value[k]
             }
+        }
 
-            modelVariableTable$df <- car_selected_table   
+        modelVariableTable$df <- car_selected_table   
         
     })
 
-    # observeEvent(c(input$make1, input$model1, input$trim1),{
-
-    #     col=1
-    #     edited_col <- which(modelVariableTable$edited_j==col)
-    #     if(length(edited_col)>0){
-    #         print("remove edit col 1")
-    #         modelVariableTable$edited_i <- modelVariableTable$edited_i[-edited_col]
-    #         modelVariableTable$edited_j <- modelVariableTable$edited_j[-edited_col]
-    #         modelVariableTable$edited_value <- modelVariableTable$edited_value[-edited_col]
-    #     }
-
-    #     #reset values if selected car changes
-
-    # })
 
 
     output$CarSelectedVariableTable <- renderDataTable({
@@ -876,6 +911,8 @@ server <- function(input, output, session) {
         modelVariableTable$edited_i <- c(modelVariableTable$edited_i, i)
         modelVariableTable$edited_j <- c(modelVariableTable$edited_j, j)
         modelVariableTable$edited_value <- c(modelVariableTable$edited_value, val)
+
+        if(verbose) print(paste0("Edited i/j/value: ", i, "/", j, "/", val))
 
 EDIT_I <- modelVariableTable$edited_i
 EDIT_J <- modelVariableTable$edited_j
@@ -923,7 +960,7 @@ EDIT_VAL <- modelVariableTable$edited_value
             df2 <- data.frame(matrix(c(
                 "Purchase Price", purchase_price,
                 "Ownership Cost", final_ownership_cost, 
-                "Remaining Value", resale_value, 
+                "Remaining Value", -resale_value, 
                 "Depreciation Cost", depreciation_cost,
                 "Operational Cost", operational_cost,
                 "Final Cost", final_cost), nrow=6, byrow=T))
@@ -932,8 +969,6 @@ EDIT_VAL <- modelVariableTable$edited_value
             comparisonData$final_cost <- df2
         }
     })
-
-
 
 
 
