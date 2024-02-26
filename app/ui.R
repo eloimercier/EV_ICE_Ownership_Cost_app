@@ -63,47 +63,8 @@ ui <- fluidPage(
                         #Model variables
                         uiOutput("CarParamsTableUI"),
 
-                        # column(12, 
-                        #     div(style = "height:20px"),
-                        #     HTML("<b>Parameters used to estimate cost of ownership</b>"),
-                        #     bsCollapse(id = "model_variable_table_collapsible", open = NULL,
-                        #         bsCollapsePanel("Model Variables  <click here to edit>", value="model_variable_collapse",
-                        #             uiOutput("model_variable_info"),
-                        #             dataTableOutput("CarSelectedVariableTable"), 
-                        #             style="info")
-                        #     ),
-                        #     div(style = "height:20px")
-                        # ),
-
                         #Comparison table and plot
                         uiOutput("CarComparisonResultsUI")
-                        # column(12,
-                        #     HTML('<b>Cost of ownership based on model variables</b>'),
-
-                        #     tabsetPanel(id="comparison_panels",
-                        #         tabPanel("Table", value="table",
-
-                        #             fluidRow(
-
-                        #                 #pruchase price
-                        #                 dataTableOutput("purchasePriceTable"),
-                        #                 #cost of ownsership over the years
-                        #                 dataTableOutput("CarComparisonTable"),
-                        #                 #final cost of ownership
-                        #                 dataTableOutput("CostOfOwnershipTable"),
-
-                        #                 #Final cost after resale
-                        #                 div(style = "height:30px"),
-                        #                 column(12, uiOutput("car_resell_info")),
-                        #                 dataTableOutput("BreakdownCostTable"),
-                        #                 dataTableOutput("CarFinalCostTable")
-                        #             )
-                        #         ),
-                        #         tabPanel(title="Plot", value="plot",
-                        #             plotlyOutput("combinedCarPlot")
-                        #         )      
-                        #     )
-                        # )
                     )
 
                 ),
@@ -111,8 +72,9 @@ ui <- fluidPage(
                 ############################
                 #PARAMETERS
                 ############################
+
                 tabPanel("Default Parameters", value="params_tab", 
-                    tabPanel(title="Rebates",  DTOutput("rebate_table", width="800px"), uiOutput("rebate_source"))
+uiOutput("defaultParamTablesUI")
                 )
 
 

@@ -195,7 +195,6 @@ server <- function(input, output, session) {
         dataTables$car_data <- car_data
 
 
-
         ########## set up country specific parameters
         country_info <- countryInfo[[input$country]]
         for (i in 1:length(country_info)){
@@ -214,6 +213,7 @@ server <- function(input, output, session) {
         ########## set up other parameters
         generalModelData$ice_maintenance <- country_info$ice_maintenance
         generalModelData$bev_maintenance <- country_info$bev_maintenance
+
     })
 
 
@@ -913,15 +913,6 @@ server <- function(input, output, session) {
         modelVariableTable$edited_value <- c(modelVariableTable$edited_value, val)
 
         if(verbose) print(paste0("Edited i/j/value: ", i, "/", j, "/", val))
-
-EDIT_I <- modelVariableTable$edited_i
-EDIT_J <- modelVariableTable$edited_j
-EDIT_VAL <- modelVariableTable$edited_value
-
-
-
-
-        # modelVariableTable$df[i,j] <- suppressWarnings(as.numeric(val)) #coerce non-numeric to numeric or NA
     })
 
 
@@ -930,51 +921,45 @@ EDIT_VAL <- modelVariableTable$edited_value
     #### CAR COMPARISON TABLE #### 
 
     observe({
-        if(!is.null(input$keep_years)){
+        req(input$keep_years)
 
-            #Cost over X years
-            df <- data.frame(matrix(ncol=6, nrow=input$keep_years))
-            df[,1] <- seq_len(input$keep_years)
-            model_variables_table <- modelVariableTable$df
-            for (i in 2:6){
-                df[,i] <- compute_ownership_cost(
-                    purchase_price=model_variables_table["purchase_price",i], 
-                    kms=input$yearly_distance, 
-                    kept_years=input$keep_years, 
-                    fuel_per_100km=model_variables_table["efficiency",i], 
-                    fuel_rate=model_variables_table["fuel_rate",i], 
-                    fuel_increase=model_variables_table["fuel_price_increase",i], 
-                    maintenance=model_variables_table["maintenance",i])
-            }
-            colnames(df) <- c("Year",carSelection$car1$name, carSelection$car2$name, carSelection$car3$name, carSelection$car4$name, carSelection$car5$name)
-            comparisonData$cost_over_years <- df
-
-            #final cost after resale
-            purchase_price <- as.numeric(model_variables_table["purchase_price",-1])
-            final_ownership_cost <- round(as.numeric(tail(df, 1)[-1]),2)
-            depreciation_x_years <- as.numeric(model_variables_table["depreciation_x_years",-1]) 
-            resale_value <- round(as.numeric(purchase_price * depreciation_x_years/100),2)
-            depreciation_cost <-  purchase_price - resale_value #how much of the car value was lost
-            operational_cost <- final_ownership_cost - purchase_price #how much did it cost to use the car
-            final_cost <- round(final_ownership_cost - resale_value,2)
-            df2 <- data.frame(matrix(c(
-                "Purchase Price", purchase_price,
-                "Ownership Cost", final_ownership_cost, 
-                "Remaining Value", -resale_value, 
-                "Depreciation Cost", depreciation_cost,
-                "Operational Cost", operational_cost,
-                "Final Cost", final_cost), nrow=6, byrow=T))
-            rownames(df2) <- c("Purchase Price", "Ownership Cost", "Remaining Value","Depreciation Cost","Operational Cost","Final Cost")
-            colnames(df2) <- c("Breakdown", carSelection$car1$name, carSelection$car2$name, carSelection$car3$name, carSelection$car4$name, carSelection$car5$name)
-            comparisonData$final_cost <- df2
+        #Cost over X years
+        df <- data.frame(matrix(ncol=6, nrow=input$keep_years))
+        df[,1] <- seq_len(input$keep_years)
+        model_variables_table <- modelVariableTable$df
+        for (i in 2:6){
+            df[,i] <- compute_ownership_cost(
+                purchase_price=model_variables_table["purchase_price",i], 
+                kms=input$yearly_distance, 
+                kept_years=input$keep_years, 
+                fuel_per_100km=model_variables_table["efficiency",i], 
+                fuel_rate=model_variables_table["fuel_rate",i], 
+                fuel_increase=model_variables_table["fuel_price_increase",i], 
+                maintenance=model_variables_table["maintenance",i])
         }
+        colnames(df) <- c("Year",carSelection$car1$name, carSelection$car2$name, carSelection$car3$name, carSelection$car4$name, carSelection$car5$name)
+        comparisonData$cost_over_years <- df
+
+        #final cost after resale
+        purchase_price <- as.numeric(model_variables_table["purchase_price",-1])
+        final_ownership_cost <- round(as.numeric(tail(df, 1)[-1]),2)
+        depreciation_x_years <- as.numeric(model_variables_table["depreciation_x_years",-1]) 
+        resale_value <- round(as.numeric(purchase_price * depreciation_x_years/100),2)
+        depreciation_cost <-  purchase_price - resale_value #how much of the car value was lost
+        operational_cost <- final_ownership_cost - purchase_price #how much did it cost to use the car
+        final_cost <- round(final_ownership_cost - resale_value,2)
+        df2 <- data.frame(matrix(c(
+            "Purchase Price", purchase_price,
+            "Ownership Cost", final_ownership_cost, 
+            "Remaining Value", -resale_value, 
+            "Depreciation Cost", depreciation_cost,
+            "Operational Cost", operational_cost,
+            "Final Cost", final_cost), nrow=6, byrow=T))
+        rownames(df2) <- c("Purchase Price", "Ownership Cost", "Remaining Value","Depreciation Cost","Operational Cost","Final Cost")
+        colnames(df2) <- c("Breakdown", carSelection$car1$name, carSelection$car2$name, carSelection$car3$name, carSelection$car4$name, carSelection$car5$name)
+        comparisonData$final_cost <- df2
     })
 
-
-
-    output$car_comparison_info <- renderUI({
-      HTML(paste0('<b>','Cost of ownership over the years based on model variables.','</b>'))
-    })
 
     #inital cost of the car
     output$purchasePriceTable <- renderDataTable({
@@ -1295,31 +1280,47 @@ EDIT_VAL <- modelVariableTable$edited_value
 ######################### PARAMETERS #########################
 ##############################################################
 
+
+    output$defaultParamTablesUI <- renderUI({
+        req(input$region)
+
+
+        rebate_source <- dataTables$rebates[grep("Source", dataTables$rebates$Region),,drop=FALSE]
+        tax_source <- dataTables$taxes[grep("Source", rownames(dataTables$taxes)),,drop=FALSE]
+        gas_source <- dataTables$gas[grep("Source", rownames(dataTables$gas)),,drop=FALSE]
+        electricity_source <- dataTables$electricity[grep("Source", rownames(dataTables$electricity)),,drop=FALSE]
+        
+
+        tabsetPanel(id="param_panels",
+            tabPanel(title="Rebates",        DTOutput("rebate_table", width="800px"),          HTML(paste0('<b>', '<a href=',rebate_source[,2],'>',rebate_source[,1],'</a>','</b>'))),
+            tabPanel(title="Taxes",          DTOutput("tax_table", width="600px"),             HTML(paste0('<b>', '<a href=',tax_source[,1],'>',rownames(tax_source),'</a>','</b>'))),
+            tabPanel(title="Gas",            DTOutput("gas_table", width="600px"),             HTML(paste0('<b>', '<a href=',gas_source[,1],'>',rownames(gas_source),'</a>','</b>'))),
+            tabPanel(title="Electricity",    DTOutput("electricity_table", width="600px"),     HTML(paste0('<b>', '<a href=',electricity_source[,1],'>',rownames(electricity_source),'</a>','</b>'))),
+            tabPanel(title="Delivery Fees",  DTOutput("delivery_fees_table", width="600px")),
+            tabPanel(title="Default Model Variables", value="default_model_variable", DTOutput("default_model_variable_table", width="600px"))
+        )
+    })
+
+
+
     #### REBATES #### 
     output$rebate_table <- renderDT({
+        req(input$region)
         rebate_table <- dataTables$rebates
-        validate(need(!all(is.na(rebate_table)), "Select a country first!"))
         rebate_table <- rebate_table[-grep("Source", rebate_table$Region),,drop=FALSE]
-        colnames(rebate_table) <- c(countrySpecificData$names_for_regions, paste0("Maximum Amount (",countrySpecificData$currency_name,")"), "If MSRP below...", "Income")
+        colnames(rebate_table) <- c(countrySpecificData$names_for_regions, paste0("Maximum Amount (",countrySpecificData$currency_name,")"), "If MSRP below...")
         rebate_table
     }, selection = 'single', rownames=FALSE, options = list(pageLength = 20, autoWidth = F, dom="t"))
 
-    output$rebate_source <- renderUI({
-        rebate_table <- dataTables$rebates
-        if (!all(is.na(rebate_table))){
-            rebate_source <- rebate_table[grep("Source", rebate_table$Region),,drop=FALSE]
-            HTML(paste0('<b>', '<a href=',rebate_source[,2],'>',rebate_source[,1],'</a>','</b>'))
-        }
-    })
 
     #### TAXES #### 
     output$tax_table <- renderDT({
-        tax_table <- dataTables$taxes
-        validate(need(!all(is.na(tax_table)), "Select a country first!"))
+        req(input$region)
+        tax_table <- dataTables$taxes        
         tax_table <- tax_table[-grep("Source", rownames(tax_table)),,drop=FALSE]
         tax_table$Region <- rownames(tax_table)
 
-        if(tax_table$Rate==0){
+        if(all(tax_table$Rate==0)){
             tax_table$Rate <- "Included"
         } else {
             tax_table$Rate <- paste0(as.numeric(tax_table$Rate) * 100, "%")
@@ -1328,54 +1329,30 @@ EDIT_VAL <- modelVariableTable$edited_value
         tax_table[,2:1]
     }, selection = 'single', rownames=FALSE, options = list(pageLength = 20, autoWidth = F, dom="t"))
 
-    output$tax_source <- renderUI({
-        tax_table <- dataTables$taxes
-        if (!all(is.na(tax_table))){
-            tax_source <- tax_table[grep("Source", rownames(tax_table)),,drop=FALSE]
-            HTML(paste0('<b>', '<a href=',tax_source[,1],'>',rownames(tax_source),'</a>','</b>'))
-        }
-    })
-
     #### GAS #### 
     output$gas_table <- renderDT({
+        req(input$region)
         gas_table <- dataTables$gas
-        validate(need(!all(is.na(gas_table)), "Select a country first!"))
         gas_table <- gas_table[-grep("Source", rownames(gas_table)),,drop=FALSE]
         gas_table$Region <- rownames(gas_table)
         colnames(gas_table) <- c(paste0(countrySpecificData$gas_rate," (",countrySpecificData$currency_name,")"), countrySpecificData$names_for_regions)
         gas_table[,2:1]
     }, selection = 'single', rownames=FALSE, options = list(pageLength = 20, autoWidth = F, dom="t"))
 
-    output$gas_source <- renderUI({
-        gas_table <- dataTables$gas
-        if (!all(is.na(gas_table))){
-            gas_source <- gas_table[grep("Source", rownames(gas_table)),,drop=FALSE]
-            HTML(paste0('<b>', '<a href=',gas_source[,1],'>',rownames(gas_source),'</a>','</b>'))
-        }
-    })
-
     #### ELECTRICITY #### 
     output$electricity_table <- renderDT({
+        req(input$region)
         electricity_table <- dataTables$electricity
-        validate(need(!all(is.na(electricity_table)), "Select a country first!"))
         electricity_table <- electricity_table[-grep("Source", rownames(electricity_table)),,drop=FALSE]
         electricity_table$Region <- rownames(electricity_table)
         colnames(electricity_table) <- c(paste0(countrySpecificData$electricity_rate, " (",countrySpecificData$currency_name,")"), countrySpecificData$names_for_regions)
         electricity_table[,2:1]
     }, selection = 'single', rownames=FALSE, options = list(pageLength = 20, autoWidth = F, dom="t"))
 
-    output$electricity_source <- renderUI({
-        electricity_table <- dataTables$electricity
-        if (!all(is.na(electricity_table))){
-            electricity_source <- electricity_table[grep("Source", rownames(electricity_table)),,drop=FALSE]
-            HTML(paste0('<b>', '<a href=',electricity_source[,1],'>',rownames(electricity_source),'</a>','</b>'))
-        }
-    })
-
     #### DELIVERY FEES #### 
     output$delivery_fees_table <- renderDT({
+        req(input$region)
         delivery_fees_table <- dataTables$delivery_fees
-        validate(need(!all(is.na(delivery_fees_table)), "Select a country first!"))
         delivery_fees_table$Region <- rownames(delivery_fees_table)
         colnames(delivery_fees_table) <- c(paste0("Amount (",countrySpecificData$currency_name,")"),countrySpecificData$names_for_regions)
         delivery_fees_table[,2:1]
@@ -1383,9 +1360,9 @@ EDIT_VAL <- modelVariableTable$edited_value
 
     #### DEFAULT MODEL VARIABLES #### 
     output$default_model_variable_table <- renderDT({
-        validate(need(!is.na(countrySpecificData$currency_symbol), "Select a country first!"))
+        req(input$region)
 
-      default_variables <- c(
+        default_variables <- c(
             "ICE efficiency"=paste(generalModelData$ice_efficiency, countrySpecificData$gas_efficiency),
             "ICE maintenance (yearly)"=paste0(generalModelData$ice_maintenance, countrySpecificData$currency_symbol), 
             "BEV efficiency"=paste(generalModelData$bev_efficiency, countrySpecificData$electricity_efficiency),
@@ -1395,9 +1372,9 @@ EDIT_VAL <- modelVariableTable$edited_value
             "Depreciation rate (yearly)"=paste0(generalModelData$depreciation_rate, "%"), 
             "Remaining value at 10 years"=paste0(generalModelData$depreciation_value_10year, "%")) 
             #Depreciation at 10 years: 25%
-      model_variable_table <- data.frame(Parameters=names(default_variables),
+        model_variable_table <- data.frame(Parameters=names(default_variables),
                                          Values=default_variables)
-      model_variable_table
+        model_variable_table
     }, selection = 'single', rownames=FALSE, options = list(pageLength = 20, autoWidth = F, dom="t"))
 
 
