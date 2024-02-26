@@ -43,7 +43,7 @@ server <- function(input, output, session) {
 
     car_ini <- list(name="", MSRP=NA, rebates=NA, purchase_price=NA, engine=NA, efficiency=NA, fuel_rate=NA, fuel_increase=NA, maintenance=NA, yearly_distance=NA, depreciation_x_years=NA)
     carSelection <- reactiveValues(car1=car_ini, car2=car_ini, car3=car_ini, car4=car_ini, car5=car_ini)
-    modelVariableTable <- reactiveValues(df=NA) #store variable needed for computation
+    modelVariableTable <- reactiveValues(df=NA, edited_i=NULL, edited_j=NULL, edited_value=NULL) #store variable needed for computation
     comparisonData <- reactiveValues(cost_over_years=NA, final_cost=NA)
 
 
@@ -177,7 +177,7 @@ server <- function(input, output, session) {
         req(input$country)
         if(verbose) print("Setting up country parameters")
 
-        #get data
+        ########## get data
         country_file <- paste0("data/EV_list_",input$country,".xlsx")
         dataTables$rebates <- read.xlsx(country_file, sheet="Rebates")
         dataTables$taxes <- read.xlsx(country_file, sheet="Taxes", rowNames = TRUE)
@@ -186,25 +186,34 @@ server <- function(input, output, session) {
         dataTables$delivery_fees <- read.xlsx(country_file, sheet="Fees", rowNames = TRUE)
         dataTables$rebates <- read.xlsx(country_file, sheet="Rebates")
 
+        ########## format car table
         car_data <- read.xlsx(country_file, sheet="Cars", check.names = TRUE)
         remove_columns <- c("Traction","Range..km.", "AC.Charging.rate..kw.", "DC.Fast.Charging.rate..kW.", "HP")
         car_data <- car_data[,-which(colnames(car_data) %in% remove_columns)]
+        colnames(car_data) <- c("Make","Model", "Trim", "Engine", "MSRP", "Link")
+        rownames(car_data) <- make.unique(paste(car_data$Make, car_data$Model, car_data$Trim))        
         dataTables$car_data <- car_data
 
-        #set up country specific parameters
+
+
+        ########## set up country specific parameters
         country_info <- countryInfo[[input$country]]
         for (i in 1:length(country_info)){
             var <- names(country_info)[i]
             countrySpecificData[[var]] <- country_info[[var]]
         }
 
-        #get region list
+        ########## get region list
         all_regions <- dataTables$rebates[,1]
         if(countrySpecificData$is_federation){ #remove federal
             all_regions <- all_regions[all_regions!="Federal"]
         }
         all_regions <- all_regions[-grep("Source", all_regions)] #remove source info
         countrySpecificData$region_list <- unique(all_regions)
+
+        ########## set up other parameters
+        generalModelData$ice_maintenance <- country_info$ice_maintenance
+        generalModelData$bev_maintenance <- country_info$bev_maintenance
     })
 
 
@@ -388,6 +397,20 @@ server <- function(input, output, session) {
 ######################### CAR LIST ##########################
 ##############################################################
 
+    output$car_table_textUI <- renderUI({
+        req(input$region)
+        HTML("<h4>Here is a list of selected BEV and ICE vehicles that are available for comparison. Car prices are given for reference only and might not reflect current pricing.<br>
+                        <b>But don't worry, you can add additional vehicles using the 'Add new car' button and update the price in the Comparator.</b></h4>")
+    })
+
+
+
+    output$add_new_carUI <- renderUI({
+        req(input$region)
+        actionButton("add_new_data_btn", "Add new car")
+    })
+
+
     observeEvent(input$add_new_data_btn, {
         showModal(
             modalDialog(
@@ -405,24 +428,22 @@ server <- function(input, output, session) {
     })
 
 
-  observeEvent(input$add_car_btn, {
-    car_list <- dataTables$car_data
-    new_car <- data.frame("Make"=input$new_make, "Model"=input$new_model, "Trim"=input$new_trim, "Engine"=input$new_engine, "MSRP"=input$new_MSRP, "Link"=NA )
-    colnames(new_car) <- colnames(car_list)
-    if(verbose) print(paste0("Adding new car: ",new_car))
+    observeEvent(input$add_car_btn, {
+        req(input$new_trim, input$new_make, input$new_trim) #ensure all info are provided
+        car_list <- dataTables$car_data
+        new_car <- data.frame("Make"=input$new_make, "Model"=input$new_model, "Trim"=input$new_trim, "Engine"=input$new_engine, "MSRP"=input$new_MSRP, "Link"=NA )
+        colnames(new_car) <- colnames(car_list)
+        if(verbose) print(paste0("Adding new car: ",new_car))
 
-    new_car_list <- rbind(new_car, car_list)
-    dataTables$car_data <- new_car_list
-  })
+        new_car_list <- rbind(new_car, car_list)
+        dataTables$car_data <- new_car_list
+    })
 
 
     output$car_table <- renderDataTable({
         req(input$region)
 
-        ########## format table
     	car_list <- dataTables$car_data
-        colnames(car_list) <- c("Make","Model", "Trim", "Engine", "MSRP", "Link")
-        rownames(car_list) <- make.unique(paste(car_list$Make, car_list$Model, car_list$Trim))
 
         ########## Calculate price after delivery fees and tax (if not included in MSRP)
     	car_list$delivery_fees <- sapply(car_list$Make, function(x){dataTables$delivery_fees[x,1]})
@@ -495,7 +516,8 @@ server <- function(input, output, session) {
 
     #### CAR SELECTION UI #### 
 
-    output$CarSelection0UI <- renderUI({
+    output$CarSelection0UI <- renderUI({ #left column i.e. rownames
+        req(input$region)
         HTML(paste0('<br><b>Make </b>','<br><p style="height: 40px"></p>',
                     '<b>Model </b>','<br><p style="height: 40px"></p>',
                     '<b>Trim </b>','<br><br>'
@@ -504,78 +526,145 @@ server <- function(input, output, session) {
 
     #Car1
     output$CarMake1UI <- renderUI({
+        req(input$region)
         makers <- sort(unique(dataTables$car_data$Make))
         selectInput('make1', '', choices = c(Choose='',makers))
     })
     output$CarModel1UI <- renderUI({
+        req(input$region)
         maker_models <- unique(dataTables$car_data[dataTables$car_data$Make==input$make1,"Model"])
         pickerInput('model1', '', choices = maker_models)
     })
     output$CarTrim1UI <- renderUI({
+        req(input$region)
         maker_model_trims <- dataTables$car_data[dataTables$car_data$Make==input$make1 & dataTables$car_data$Model==input$model1,"Trim"]
         pickerInput('trim1', '', choices = maker_model_trims)
     })
 
     #Car2
     output$CarMake2UI <- renderUI({
+        req(input$region)
         makers <- sort(unique(dataTables$car_data$Make))
         pickerInput('make2', '', choices = c(Choose='',makers))
     })
     output$CarModel2UI <- renderUI({
+        req(input$region)
         maker_models <- unique(dataTables$car_data[dataTables$car_data$Make==input$make2,"Model"])
         pickerInput('model2', '', choices = maker_models)
     })
     output$CarTrim2UI <- renderUI({
+        req(input$region)
         maker_model_trims <- dataTables$car_data[dataTables$car_data$Make==input$make2 & dataTables$car_data$Model==input$model2,"Trim"]
         pickerInput('trim2', '', choices = maker_model_trims)
     })
 
     #Car 3
     output$CarMake3UI <- renderUI({
+        req(input$region)
         makers <- sort(unique(dataTables$car_data$Make))
         pickerInput('make3', '', choices = c(Choose='',makers))
     })
     output$CarModel3UI <- renderUI({
+        req(input$region)
         maker_models <- unique(dataTables$car_data[dataTables$car_data$Make==input$make3,"Model"])
         pickerInput('model3', '', choices = maker_models)
     })
     output$CarTrim3UI <- renderUI({
+        req(input$region)
         maker_model_trims <- dataTables$car_data[dataTables$car_data$Make==input$make3 & dataTables$car_data$Model==input$model3,"Trim"]
         pickerInput('trim3', '', choices = maker_model_trims)
     })
 
     #Car 4
     output$CarMake4UI <- renderUI({
+        req(input$region)
         makers <- sort(unique(dataTables$car_data$Make))
         pickerInput('make4', '', choices = c(Choose='',makers))
     })
     output$CarModel4UI <- renderUI({
+        req(input$region)
         maker_models <- unique(dataTables$car_data[dataTables$car_data$Make==input$make4,"Model"])
         pickerInput('model4', '', choices = maker_models)
     })
     output$CarTrim4UI <- renderUI({
+        req(input$region)
         maker_model_trims <- dataTables$car_data[dataTables$car_data$Make==input$make4 & dataTables$car_data$Model==input$model4,"Trim"]
         pickerInput('trim4', '', choices = maker_model_trims)
     })
 
     #Car 5
     output$CarMake5UI <- renderUI({
+        req(input$region)
         makers <- sort(unique(dataTables$car_data$Make))
         pickerInput('make5', '', choices = c(Choose='',makers))
     })
     output$CarModel5UI <- renderUI({
+        req(input$region)
         maker_models <- unique(dataTables$car_data[dataTables$car_data$Make==input$make5,"Model"])
         pickerInput('model5', '', choices = maker_models)
     })
     output$CarTrim5UI <- renderUI({
+        req(input$region)
         maker_model_trims <- dataTables$car_data[dataTables$car_data$Make==input$make5 & dataTables$car_data$Model==input$model5,"Trim"]
         pickerInput('trim5', '', choices = maker_model_trims)
     })
 
+
+    # parameters table UI
+    output$CarParamsTableUI <- renderUI({
+        req(input$region)
+        column(12, 
+            div(style = "height:20px"),
+            HTML("<b>Parameters used to estimate cost of ownership</b>"),
+            bsCollapse(id = "model_variable_table_collapsible", open = NULL,
+                bsCollapsePanel("Model Variables  <click here to edit>", value="model_variable_collapse",
+                    uiOutput("model_variable_info"),
+                    dataTableOutput("CarSelectedVariableTable"), 
+                    style="info")
+            ),
+            div(style = "height:20px")
+        )
+
+    })
+
+
+    # comparison results UI
+    output$CarComparisonResultsUI <- renderUI({
+        req(input$region)
+                            column(12,
+                            HTML('<b>Cost of ownership based on model variables</b>'),
+
+                            tabsetPanel(id="comparison_panels",
+                                tabPanel("Table", value="table",
+
+                                    fluidRow(
+
+                                        #pruchase price
+                                        dataTableOutput("purchasePriceTable"),
+                                        #cost of ownsership over the years
+                                        dataTableOutput("CarComparisonTable"),
+                                        #final cost of ownership
+                                        dataTableOutput("CostOfOwnershipTable"),
+
+                                        #Final cost after resale
+                                        div(style = "height:30px"),
+                                        column(12, uiOutput("car_resell_info")),
+                                        dataTableOutput("BreakdownCostTable"),
+                                        dataTableOutput("CarFinalCostTable")
+                                    )
+                                ),
+                                tabPanel(title="Plot", value="plot",
+                                    plotlyOutput("combinedCarPlot")
+                                )      
+                            )
+                        )
+    })
+
 #### UPDATE SELECTION #### 
 
-    observeEvent(c(input$country, input$yearly_distance, input$make1, input$model1, input$trim1),{
-        if(!is.null(input$country) & !is.null(input$trim1) & !identical(input$trim1,"")){
+    observeEvent(c(input$region, input$yearly_distance, input$make1, input$model1, input$trim1),{
+        req(input$region, input$trim1)
+        if(!is.null(input$region) & !is.null(input$trim1) & !identical(input$trim1,"")){
             car_long_name <- paste(input$make1, input$model1, input$trim1)
             engine <- dataTables$car_data[car_long_name,"Engine"]
             msrp <- dataTables$car_data[car_long_name,"MSRP"]
@@ -598,8 +687,8 @@ server <- function(input, output, session) {
         }
     })
 
-    observeEvent(c(input$country, input$yearly_distance, input$make2, input$model2, input$trim2),{
-        if(!is.null(input$country) & !is.null(input$trim2) & !identical(input$trim2,"")){
+    observeEvent(c(input$region, input$yearly_distance, input$make2, input$model2, input$trim2),{
+        if(!is.null(input$region) & !is.null(input$trim2) & !identical(input$trim2,"")){
             car_long_name <- paste(input$make2, input$model2, input$trim2)
             engine <- dataTables$car_data[car_long_name,"Engine"]
             msrp <- dataTables$car_data[car_long_name,"MSRP"]
@@ -622,8 +711,8 @@ server <- function(input, output, session) {
         }
     })
 
-    observeEvent(c(input$country, input$yearly_distance, input$make3, input$model3, input$trim3),{
-        if(!is.null(input$country) & !is.null(input$trim3) & !identical(input$trim3,"")){
+    observeEvent(c(input$region, input$yearly_distance, input$make3, input$model3, input$trim3),{
+        if(!is.null(input$region) & !is.null(input$trim3) & !identical(input$trim3,"")){
             car_long_name <- paste(input$make3, input$model3, input$trim3)
             engine <- dataTables$car_data[car_long_name,"Engine"]
             msrp <- dataTables$car_data[car_long_name,"MSRP"]
@@ -646,8 +735,8 @@ server <- function(input, output, session) {
         }
     })
 
-    observeEvent(c(input$country, input$yearly_distance, input$make4, input$model4, input$trim4),{
-        if(!is.null(input$country) & !is.null(input$trim4) & !identical(input$trim4,"")){
+    observeEvent(c(input$region, input$yearly_distance, input$make4, input$model4, input$trim4),{
+        if(!is.null(input$region) & !is.null(input$trim4) & !identical(input$trim4,"")){
             car_long_name <- paste(input$make4, input$model4, input$trim4)
             engine <- dataTables$car_data[car_long_name,"Engine"]
             msrp <- dataTables$car_data[car_long_name,"MSRP"]
@@ -670,8 +759,8 @@ server <- function(input, output, session) {
         }
     })
 
-    observeEvent(c(input$country, input$yearly_distance, input$make5, input$model5, input$trim5),{
-        if(!is.null(input$country) & !is.null(input$trim5) & !identical(input$trim5,"")){
+    observeEvent(c(input$region, input$yearly_distance, input$make5, input$model5, input$trim5),{
+        if(!is.null(input$region) & !is.null(input$trim5) & !identical(input$trim5,"")){
             car_long_name <- paste(input$make5, input$model5, input$trim5)
             engine <- dataTables$car_data[car_long_name,"Engine"]
             msrp <- dataTables$car_data[car_long_name,"MSRP"]
@@ -699,11 +788,12 @@ server <- function(input, output, session) {
 #### DISPLAY VARIABLE TABLE #### 
 
     output$model_variable_info <- renderUI({
-      HTML(paste0("<b>The default variables are taken from the Parameter tables based on your ", countrySpecificData$names_for_regions," and the type of vehicle. Double click on a cell to edit.</b>"))
+        req(input$region)
+        HTML(paste0("<b>The default variables are taken from the Parameter tables based on your ", countrySpecificData$names_for_regions," and the type of vehicle. Double click on a cell to edit.</b>"))
     })
 
     observe({
-        if(!is.null(input$yearly_distance)){
+        req(input$yearly_distance)
             #prepares the model variable table
             c0 <-c( paste0("Purchase Price (",countrySpecificData$currency_name,")"), 
                 paste0(firstup(countrySpecificData$distance)," driven (yearly)"), 
@@ -717,17 +807,46 @@ server <- function(input, output, session) {
             c3 <- data.frame(c(carSelection$car3$purchase_price, carSelection$car3$yearly_distance, carSelection$car3$efficiency, carSelection$car3$fuel_rate, carSelection$car3$fuel_increase, carSelection$car3$maintenance, carSelection$car3$depreciation_x_years))
             c4 <- data.frame(c(carSelection$car4$purchase_price, carSelection$car4$yearly_distance, carSelection$car4$efficiency, carSelection$car4$fuel_rate, carSelection$car4$fuel_increase, carSelection$car4$maintenance, carSelection$car4$depreciation_x_years))
             c5 <- data.frame(c(carSelection$car5$purchase_price, carSelection$car5$yearly_distance, carSelection$car5$efficiency, carSelection$car5$fuel_rate, carSelection$car5$fuel_increase, carSelection$car5$maintenance, carSelection$car5$depreciation_x_years))
+
             car_selected_table <- data.frame(cbind(c0,c1,c2,c3,c4,c5))
             colnames(car_selected_table) <- c("",carSelection$car1$name, carSelection$car2$name, carSelection$car3$name, carSelection$car4$name, carSelection$car5$name)
             rownames(car_selected_table) <- c("purchase_price", "distance", "efficiency", "fuel_rate", "fuel_price_increase", "maintenance", "depreciation_x_years")
+
+
+
+
+            #changed values that have been edited
+            if(all(!is.null(modelVariableTable$edited_value))){
+                for (k in seq_along(modelVariableTable$edited_value)){
+                    car_selected_table[modelVariableTable$edited_i[k], modelVariableTable$edited_j[k]] <- modelVariableTable$edited_value[k]
+                }
+            }
+
             modelVariableTable$df <- car_selected_table   
-        }
+        
     })
+
+    # observeEvent(c(input$make1, input$model1, input$trim1),{
+
+    #     col=1
+    #     edited_col <- which(modelVariableTable$edited_j==col)
+    #     if(length(edited_col)>0){
+    #         print("remove edit col 1")
+    #         modelVariableTable$edited_i <- modelVariableTable$edited_i[-edited_col]
+    #         modelVariableTable$edited_j <- modelVariableTable$edited_j[-edited_col]
+    #         modelVariableTable$edited_value <- modelVariableTable$edited_value[-edited_col]
+    #     }
+
+    #     #reset values if selected car changes
+
+    # })
 
 
     output$CarSelectedVariableTable <- renderDataTable({
         car_selected_table <- modelVariableTable$df
-        if(!all(is.na(car_selected_table[1,-1]))){ #prevent generation of the table before cars have been selected - e.g. whem running walkthrough
+
+
+        if(!all(is.na(car_selected_table[1,-1]))){ #prevent generation of the table before cars have been selected - e.g. when running walkthrough
             not_editable_cols <- which(sapply(c(input$trim1,input$trim2, input$trim3, input$trim4, input$trim5), function(x){identical(x,"")}, USE.NAMES=F)) #columns without a selection should not be editable
             car_selected_table$Tips <- c("Purchase price after accounting for MSRP, delivery fees, taxes and rebates", "The distance you drive in a year", "The car efficiency i.e. how much electricity or gas it uses", "Cost of electricty or gas in your area", "An estimation of the yearly electricity or gas increase", "Estimated yearly maintenance cost", "% of MSRP remaining at the end of the period")
             datatable(car_selected_table, colnames = rep("", ncol(car_selected_table)), rownames=FALSE,
@@ -753,8 +872,22 @@ server <- function(input, output, session) {
         i <- input$CarSelectedVariableTable_cell_edit$row
         j <- input$CarSelectedVariableTable_cell_edit$col+1
         val <- ifelse(input$CarSelectedVariableTable_cell_edit$value!="", input$CarSelectedVariableTable_cell_edit$value, NA)
-        modelVariableTable$df[i,j] <- suppressWarnings(as.numeric(val)) #coerce non-numeric to numeric or NA
+
+        modelVariableTable$edited_i <- c(modelVariableTable$edited_i, i)
+        modelVariableTable$edited_j <- c(modelVariableTable$edited_j, j)
+        modelVariableTable$edited_value <- c(modelVariableTable$edited_value, val)
+
+EDIT_I <- modelVariableTable$edited_i
+EDIT_J <- modelVariableTable$edited_j
+EDIT_VAL <- modelVariableTable$edited_value
+
+
+
+
+        # modelVariableTable$df[i,j] <- suppressWarnings(as.numeric(val)) #coerce non-numeric to numeric or NA
     })
+
+
 
 
     #### CAR COMPARISON TABLE #### 
