@@ -8,7 +8,7 @@ ui <- fluidPage(
 ############################ LEFT PANEL ##########################
 ##############################################################
 
-    titlePanel("EV and ICE Ownership Cost"),
+    titlePanel("EV and ICE Ownership Cost Calculator"),
 
 
     sidebarLayout(
@@ -17,12 +17,10 @@ ui <- fluidPage(
 ############################ LEFT PANEL ##########################
 ##############################################################
 
-    sidebarPanel(width=2,
+    sidebarPanel(width=2, id="sidebar_panel",
         actionButton("walkthroughBtn", label="Interactive Walkthrough", icon.library="font awesome",css.class='sc-button'),
         HTML("<h3>User info:</h3>"),
-        uiOutput("user_countryUI"),
-        uiOutput("user_regionUI"),
-        uiOutput("user_kms_yearsUI"),
+        uiOutput("user_infoUI"),
         div(style = "height:20px"),
         uiOutput("rebate_info")
     ),
@@ -38,7 +36,7 @@ ui <- fluidPage(
                 ############################
                 #CAR LIST
                 ############################
-                tabPanel("Car Overview",value="car_list_tab", 
+                tabPanel("Car List",value="car_list_tab", 
                     uiOutput("car_table_textUI"),
                     uiOutput("add_new_carUI"),                        
                     dataTableOutput("car_table")
@@ -47,7 +45,7 @@ ui <- fluidPage(
                 ############################
                 #COMPARISON
                 ############################
-                tabPanel("Car Comparator",value="comparison_tab", 
+                tabPanel("Comparator Tool",value="comparison_tab", 
                     fluidRow(
                         #Car selection UI
                         column(12, 

@@ -8,6 +8,8 @@ server <- function(input, output, session) {
 #conversion to imperial units
 #finish walkthrough
 #simplified duplicated chunks of code
+#Licence
+#reset car selection when country changes
 
 ##############################################################
 ######################### WELCOME ############################
@@ -56,124 +58,118 @@ server <- function(input, output, session) {
 ######################## WALKTHROUGH #########################
 ##############################################################
 
-    # walkthrough <- Conductor$new(
-    #     exitOnEsc = FALSE,
-    #     keyboardNavigation = TRUE)$
-    #     step(title="<b>Welcome!</b>", text="Welcome to the Electric Vehicle Comparison Tool!",id = "first")$
-    #     step(title="<b>Enter your info</b>", text="This is where you select your country, region, the distance driven annually and how long you intend to keep the car for.", el="#country", 
-    #         id = "user_info.1")$
-    #     step(title="<b>Enter your info</b>", text="This will determine the model parameters such has potential rebates, electricity price, resale value, etc.", el="#country", 
-    #         id = "user_info.2")$
-    #     step(title="<b>Comparison tool</b>",text="This is the comparison tool. It allows you to compare up to 5 cars and see how much it will cost you at the end of the period.", 
-    #         id = "comparator.transistion", buttons = list(list(action = "next",text = "Next")))$
-    #     step(title="<b>Select cars for comparison</b>", text="Select the make, model and trim among the available cars.", el="#CarMake1UI", 
-    #         id = "comparator.1")$
-    #     step(title="<b>Default model parameters</b>", text="Default parameters are automatically applied based on the user info.<br><br><i>Note: the default parameters are taken from the tables in the 'Parameters' tab.</i>",el="#CarSelectedVariableTable", 
-    #         id = "comparator.2")$
-    #     step(title="<b>Customize model parameters</b>", text="You can fully customize the model if the default values do not match your profile.<br><br><i>Edit the parameters by double-clicking a cell and enter a new value.</i>",el="#CarSelectedVariableTable", 
-    #         id = "comparator.3")$
-    #     step(title="<b>Cost of ownership</b>", text="The tool calculates the cost of ownership over the period.<br><br>This is how much you can expect to have spent at the end of the period.", el="#CarComparisonTable", 
-    #         id = "comparator.4")$
-    #     step(title="<b>Cost of ownership after resale</b>", text="Assuming you resale the vehicle at the end of the period, this is how much it did cost you.", el="#CarFinalCostTable", 
-    #         id = "comparator.5")$
-    #     step(title="<b>Comparison plot</b>", text="This is a graphical representation of the cost of ownership.", el="#plot",
-    #         id = "compararison_plot.transistion", buttons = list(list(action = "next",text = "Next")))$
-    #     step(title="<b>Comparison plot</b>", text="In this scenario, the Honda CRV ends up being more expensive that the Hyundai IONIQ5 after 7 years despite a lower MSRP.", el="#combinedCarPlot", 
-    #         id = "compararison_plot.2")$
-    #     step(title="<b>Change your info</b>", text="You can always change the parameters here to see how it affects the model.", 
-    #         id = "clear_walkthrough_options")$
-    #     step(title="<b>Questions or Comments?</b>", text='Visit my <a href="https://github.com/eloimercier/EV_app">github repo</a> if you have any questions or comments.', 
-    #         id = "last", buttons = list(list(action = "back",secondary = TRUE, text = "Previous"),list(action = "next",text = "Finish")))
 
-    # observeEvent(input$walkthroughBtn,{
-    #     #start walktorugh
-    #     walkthrough$init()$start()
-    # })
+    walkthrough <- Conductor$new(
+        exitOnEsc = FALSE,
+        keyboardNavigation = TRUE)$
+        step(title="<b>Welcome!</b>", text="Welcome to the BEV and ICE Ownership Cost Calculator app!",id = "welcome_stp1",  buttons = list(list(action = "next",text = "Next")))$
+        step(title="<b>1. Enter your info</b>", text="<b>Provide your information so the app can calculate the potential rebates.</b><br><br><i>This will be used to determine the rebates and other parameters for the model.</i>", el="#sidebar_panel", 
+            id = "user_info_stp1")$
+        step(title="<b>2. View available vehicles</b>", text="Here are the vehicles available for selection. These are popular BEV and ICE vehicles that <b>you will be able to choose in the Comparator tool.</b><br><br><b>Use the 'Add new car' button to add a new vehicle to the list.</b><br><br><i>You can have a brief overview of the MSRP and Purchase Price.</i>", el="#car_table", 
+            id = "car_list_stp1")$
+        step(title="<b>3. Select vehicles</b>", text="This is the comparison tool. It allows you to compare the cost of ownership for up to 5 cars.<br><br>
+                                                                <b>Select the make, model and trim among the available cars.</b>
+                                                               ", el="#comparison_tab",id = "comparator_stp1")$
+         step(title="<b>4. Calculate Cost of Ownership</b>", text="Here is the cost of ownership. You can <b>quickly compare the purchase price, the cost of ownership and the resale value of the vehicle</b>.", el="#CarComparisonTable", 
+            id = "comparator_stp2")$
+         step(title="<b>5. Adjust the parameters</b>", text="Default parameters are automatically applied based on the user info.<br><br><b>You can fully customize the model if the default values do not match your profil.<br><br></b><i>Note: the default parameters are taken from the tables in the 'Parameters' tab.</i>",el="#CarSelectedVariableTable", 
+            id = "comparator_stp3")$
+        step(title="<b>Questions or Comments?</b>", text='Visit my <a href="https://github.com/eloimercier/EV_app">github repo</a> if you have any questions or comments.', 
+            id = "questions_stp1", buttons = list(list(action = "back",secondary = TRUE, text = "Previous"),list(action = "next",text = "Finish")))
 
-    # observe({
-    #     current_step <- walkthrough$getCurrentStep()
-    #     btn <- input$walkthroughBtn #to force update
 
-    #     #step options for walkthrough
-    #     if(identical(current_step, "first")){
-    #         updateSelectInput(session,"country", selected = "Canada")
-    #         updateSelectInput(session,"region", selected = "Ontario")
-    #     }
+    observeEvent(input$walkthroughBtn,{
+        #start walktorugh
+        walkthrough$init()$start()
+    })
 
-    #     #reset options at the end
-    #     if (identical(current_step, "clear_walkthrough_options")) { #reset options when we reach end of tour or if tour cancel
-    #         updateSelectInput(session,"region", selected = "")
-    #         updateSelectInput(session,"make1", selected = "")
-    #         updateSelectInput(session,"make2", selected = "")
-    #         updateCollapse(session, id="model_variable_table_collapsible", open = NULL, close = "model_variable_collapse", style = NULL)
-    #         updateTabsetPanel(session, inputId="tabsetPanel", selected="user_info")
-    #         updateTabsetPanel(session, inputId="comparison_panels", selected="table")
-    #         updateSelectInput(session,"country", selected = "")
-    #     }
 
-    #     #actions at specific steps
-    #     if(identical(current_step, "comparator.transistion")){
-    #         updateTabsetPanel(session, inputId="tabsetPanel", selected="comparison_tab")
-    #         updateSelectInput(session,"make1", selected = "Honda")
-    #         updateSelectInput(session,"make2", selected = "Hyundai")
-    #         updateSelectInput(session,"model1", selected = "CRV")
-    #         updateSelectInput(session,"model2", selected = "IONIQ 5")
-    #         updateCollapse(session, id="model_variable_table_collapsible", open = "model_variable_collapse", close = NULL, style = NULL)
-    #     }
-    #     if(identical(current_step, "compararison_plot.transistion")){
-    #         updateTabsetPanel(session, inputId="comparison_panels", selected="plot")
-    #     }
+    #store step in a reactive
+    walkthroughStep <- reactiveValues(step=NA)
+    observe({
+        btn <- input$walkthroughBtn #to force update
+        walkthroughStep$step <- walkthrough$getCurrentStep()
+    })
 
-    # })
+    #update stuff when step changes
+    observeEvent(walkthroughStep$step,{
+
+        current_step <- walkthroughStep$step # walkthrough$getCurrentStep()
+
+        # #step options for walkthrough
+        if(!identical(current_step, "questions_stp1")){
+            print(current_step)
+            updateSelectInput(session,"country", selected = "Canada")
+            updateSelectInput(session,"region", selected = "Ontario")
+        }
+
+        if(identical(current_step, "user_info_stp1")){
+            print(current_step)
+
+            updateSelectInput(session,"country", selected = "Canada")
+
+            updateSelectInput(session,"region", selected = "Ontario")
+        }
+
+        if(identical(current_step, "car_list_stp1")){
+            updateTabsetPanel(session, inputId="tabsetPanel", selected="car_list_tab")
+        }
+
+        if(identical(current_step, "comparator_stp1") | identical(current_step, "comparator_stp2") | identical(current_step, "comparator_stp3")){
+            updateTabsetPanel(session, inputId="tabsetPanel", selected="comparison_tab")
+            updateSelectInput(session,"make1", selected = "Honda")
+            updateSelectInput(session,"make2", selected = "Hyundai")
+            updateSelectInput(session,"model1", selected = "CRV")
+            updateSelectInput(session,"model2", selected = "IONIQ 5")
+            updateCollapse(session, id="model_variable_table_collapsible", open = "model_variable_collapse", close = NULL, style = NULL)
+        }
+
+        #reset options at the end
+        if (identical(current_step, "questions_stp1")) { #reset options when we reach end of tour or if tour cancel
+            updateSelectInput(session,"region", selected = "")
+            updateSelectInput(session,"make1", selected = "")
+            updateSelectInput(session,"make2", selected = "")
+            updateCollapse(session, id="model_variable_table_collapsible", open = NULL, close = "model_variable_collapse", style = NULL)
+            updateTabsetPanel(session, inputId="tabsetPanel", selected="user_info")
+            updateTabsetPanel(session, inputId="comparison_panels", selected="table")
+            updateSelectInput(session,"country", selected = "")
+            updateTabsetPanel(session, inputId="tabsetPanel", selected="car_list_tab")
+        }
+    })
 
 
 ##############################################################
 ######################### USER INFO ##########################
 ##############################################################
 
-######### Collect user info
-
-    userInfo <- reactiveValues(country=NULL, region=NULL, yearly_distance=NULL, keep_years=NULL) 
-
-    observeEvent(c(input$country, input$region, input$yearly_distance, input$keep_years),{
-        region <- ifelse(is.null(input$region) | !identical(userInfo$country,input$country), input$country, input$region) #return country name if input$region not spcified or when changing country
-        userInfo$region          <- ifelse(is.null(input$region) | !identical(userInfo$country,input$country), input$country, input$region) #return country name if input$region not spcified or when changing country
-        userInfo$country         <- input$country 
-        userInfo$yearly_distance <- input$yearly_distance 
-        userInfo$keep_years      <- input$keep_years
-    })
-
 
 ######### Create UI elements
 
-    output$user_countryUI <- renderUI({
+    output$user_infoUI <- renderUI({
         country_list <- names(countryInfo)
-        selectizeInput('country', 'Country:', c(country_list),
-            options = list(
-                placeholder = 'Please select an option below',
-                onInitialize = I('function() { this.setValue(""); }')
-                ))            
+
+        tagList(
+            selectizeInput('country', 'Country:', c(country_list),
+                options = list(
+                    placeholder = 'Please select an option below',
+                    onInitialize = I('function() { this.setValue(""); }')
+                    )),
+            selectizeInput('region',  paste0("Region",":"), c(""),
+                options = list(
+                    placeholder = 'Please select an option below',
+                    onInitialize = I('function() { this.setValue(""); }')
+                    )),
+            numericInput("yearly_distance", "Km driven yearly:", 10000, min = 1, max = 100000, step=1000),
+            numericInput("keep_years", "How many years do you intend to keep the car for:", 10, min = 1, max = 20, step=1)        
+        )
     })
 
-    output$user_regionUI <- renderUI({
+    observeEvent( countrySpecificData$region_list,{
         req(input$country)
-        region_list <- countrySpecificData$region_list #when country not yet selected
-
-        selectizeInput('region',  paste0(countrySpecificData$names_for_regions,":"), c(region_list),
-            options = list(
-                placeholder = 'Please select an option below',
-                onInitialize = I('function() { this.setValue(""); }')
-                ))  
-    
+        region_list <- countrySpecificData$region_list
+        updateSelectInput(session, "region", choices = region_list)
     })
 
-
-    output$user_kms_yearsUI <- renderUI({
-      tagList(
-        numericInput("yearly_distance", "Km driven yearly:", 10000, min = 1, max = 100000, step=1000),
-        numericInput("keep_years", "How many years do you intend to keep the car for:", 10, min = 1, max = 20, step=1)
-      )
-    })
 
 ######### Setup country specific data
 
@@ -226,8 +222,6 @@ server <- function(input, output, session) {
 
 
     observeEvent(input$region,{
-
-
         req(input$region)
 
         # region_long is to store the full name of the region when multiple rebate rates exist (e.g. "BC (>80k income)"); 'region' is the shotrhen version of it (e.g. "BC")
