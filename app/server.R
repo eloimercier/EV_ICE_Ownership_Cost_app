@@ -6,7 +6,6 @@ server <- function(input, output, session) {
 #TODO:
 #add time car list was last updated
 #conversion to imperial units
-#finish walkthrough
 #simplified duplicated chunks of code
 #Licence
 #reset car selection when country changes
@@ -94,7 +93,7 @@ server <- function(input, output, session) {
     #update stuff when step changes
     observeEvent(walkthroughStep$step,{
 
-        current_step <- walkthroughStep$step # walkthrough$getCurrentStep()
+        current_step <- walkthroughStep$step 
 
         # #step options for walkthrough
         if(!identical(current_step, "questions_stp1")){
@@ -105,9 +104,7 @@ server <- function(input, output, session) {
 
         if(identical(current_step, "user_info_stp1")){
             print(current_step)
-
             updateSelectInput(session,"country", selected = "Canada")
-
             updateSelectInput(session,"region", selected = "Ontario")
         }
 
@@ -214,6 +211,12 @@ server <- function(input, output, session) {
         ########## set up other parameters
         generalModelData$ice_maintenance <- country_info$ice_maintenance
         generalModelData$bev_maintenance <- country_info$bev_maintenance
+
+        # ########## reset selection
+        #     updateSelectInput(session,"make1", selected = NULL)
+        #     updateSelectInput(session,"make2", selected = "Hyundai")
+        #     print("RESET")
+
 
     })
 
@@ -581,8 +584,8 @@ server <- function(input, output, session) {
 
 #### UPDATE SELECTION #### 
 
-    observeEvent(c(input$region, input$yearly_distance, input$keep_years, input$make1, input$model1, input$trim1),{
-        req(input$region, input$trim1)
+    observeEvent(c(input$country,input$region, input$yearly_distance, input$keep_years, input$make1, input$model1, input$trim1),{
+        # req(input$region, input$trim1)
         if(!is.null(input$region) & !is.null(input$trim1) & !identical(input$trim1,"")){
             car_long_name <- paste(input$make1, input$model1, input$trim1)
             engine <- dataTables$car_data[car_long_name,"Engine"]
@@ -606,7 +609,7 @@ server <- function(input, output, session) {
         }
     })
 
-    observeEvent(c(input$region, input$yearly_distance, input$keep_years, input$make2, input$model2, input$trim2),{
+    observeEvent(c(input$country,input$region, input$yearly_distance, input$keep_years, input$make2, input$model2, input$trim2),{
         if(!is.null(input$region) & !is.null(input$trim2) & !identical(input$trim2,"")){
             car_long_name <- paste(input$make2, input$model2, input$trim2)
             engine <- dataTables$car_data[car_long_name,"Engine"]
@@ -630,7 +633,7 @@ server <- function(input, output, session) {
         }
     })
 
-    observeEvent(c(input$region, input$yearly_distance, input$keep_years, input$make3, input$model3, input$trim3),{
+    observeEvent(c(input$country,input$region, input$yearly_distance, input$keep_years, input$make3, input$model3, input$trim3),{
         if(!is.null(input$region) & !is.null(input$trim3) & !identical(input$trim3,"")){
             car_long_name <- paste(input$make3, input$model3, input$trim3)
             engine <- dataTables$car_data[car_long_name,"Engine"]
@@ -654,7 +657,7 @@ server <- function(input, output, session) {
         }
     })
 
-    observeEvent(c(input$region, input$yearly_distance, input$keep_years, input$make4, input$model4, input$trim4),{
+    observeEvent(c(input$country,input$region, input$yearly_distance, input$keep_years, input$make4, input$model4, input$trim4),{
         if(!is.null(input$region) & !is.null(input$trim4) & !identical(input$trim4,"")){
             car_long_name <- paste(input$make4, input$model4, input$trim4)
             engine <- dataTables$car_data[car_long_name,"Engine"]
@@ -678,7 +681,7 @@ server <- function(input, output, session) {
         }
     })
 
-    observeEvent(c(input$region, input$yearly_distance, input$keep_years, input$make5, input$model5, input$trim5),{
+    observeEvent(c(input$country,input$region, input$yearly_distance, input$keep_years, input$make5, input$model5, input$trim5),{
         if(!is.null(input$region) & !is.null(input$trim5) & !identical(input$trim5,"")){
             car_long_name <- paste(input$make5, input$model5, input$trim5)
             engine <- dataTables$car_data[car_long_name,"Engine"]
