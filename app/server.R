@@ -29,7 +29,7 @@ server <- function(input, output, session) {
         USA = list(names_for_regions="State", is_federation=TRUE, tax_included=FALSE,
                 currency_name="USD", currency_symbol="$", currency_symbol_cent="¢", 
                 default_unit_system="imperial", distance_unit="km", gas_efficiency_unit="L/100km", electricity_efficiency_unit="kWh/100kms", #change to distance_unit="miles", gas_efficiency_unit="mpg", electricity_efficiency_unit="m/kWh"  
-                 gas_rate="¢/L",  electricity_rate="¢/kW", ice_maintenance=250, bev_maintenance=100),
+                gas_rate="¢/L",  electricity_rate="¢/kW", ice_maintenance=250, bev_maintenance=100),
         Canada = list(names_for_regions="Province/Territory", is_federation=TRUE, tax_included=FALSE,
                 currency_name="CAD", currency_symbol="$", currency_symbol_cent="¢", 
                 default_unit_system="imperial", distance_unit="km", gas_efficiency_unit="L/100km", electricity_efficiency_unit="kWh/100kms", 
@@ -48,7 +48,7 @@ server <- function(input, output, session) {
     generalModelData <- reactiveValues( federal_rebate=NA, federal_max_msrp=NA, region_rebate=NA, region_max_msrp=NA, tax=NA, gas_rate=NA, electricity_rate=NA, #region specific
                                         ice_efficiency=8, ice_maintenance=NA, bev_efficiency=15, bev_maintenance=NA, depreciation_rate=13, depreciation_value_10year=25, gas_increase=5, electricity_increase=1) #fixed
 
-    dataTables <- reactiveValues(car_data=data.frame(), rebates=NA, taxes=NA, gas=NA, electricity=NA, fees=NA, delivery_fees=NA)
+    dataTables <- reactiveValues(car_data=data.frame(), rebates=NA, taxes=NA, gas=NA, electricity=NA, fees=NA, delivery_fees=NA, last_updated=NA)
 
     car_ini <- list(name="", MSRP=NA, rebates=NA, purchase_price=NA, engine=NA, efficiency=NA, fuel_rate=NA, fuel_increase=NA, maintenance=NA, yearly_distance=NA, depreciation_x_years=NA)
     carSelection <- reactiveValues(car1=car_ini, car2=car_ini, car3=car_ini, car4=car_ini, car5=car_ini)
@@ -202,6 +202,7 @@ server <- function(input, output, session) {
         dataTables$electricity <- read.xlsx(country_file, sheet="Electricity", rowNames = TRUE)
         dataTables$delivery_fees <- read.xlsx(country_file, sheet="Fees", rowNames = TRUE)
         dataTables$rebates <- read.xlsx(country_file, sheet="Rebates")
+        dataTables$last_updated <- format(as.Date(file.info(country_file)$mtime), "%m %b %Y")
 
         ########## format car table
         car_data <- read.xlsx(country_file, sheet="Cars", check.names = TRUE)
@@ -333,8 +334,8 @@ server <- function(input, output, session) {
 
     output$car_table_textUI <- renderUI({
         req(input$region)
-        HTML("<h4>Here is a list of selected BEV and ICE vehicles that are available for comparison. Car prices are given for reference only and might not reflect current pricing.<br>
-                        <b>But don't worry, you can add additional vehicles using the 'Add new car' button and update the price in the Comparator.</b></h4>")
+        HTML(paste0("Here is a list of selected BEV and ICE vehicles that are available for comparison. Car prices are given for reference only and might not reflect current pricing.<br>
+                        <i>Last updated on ",dataTables$last_updated,"</i>"))
     })
 
 
@@ -864,9 +865,9 @@ server <- function(input, output, session) {
         for (i in 2:6){
             df[,i] <- compute_ownership_cost(
                 purchase_price=model_variables_table["purchase_price",i], 
-                kms=convert_distance(input$yearly_distance, convert_from=generalModelData$unit_system, convert_to="metrics"), 
+                kms=input$yearly_distance, 
                 kept_years=input$keep_years, 
-                fuel_per_100km=convert_gas_consumption(model_variables_table["efficiency",i], convert_from=generalModelData$unit_system, convert_to="metrics"), 
+                fuel_per_100km=model_variables_table["efficiency",i], 
                 fuel_rate=model_variables_table["fuel_rate",i], 
                 fuel_increase=model_variables_table["fuel_price_increase",i], 
                 maintenance=model_variables_table["maintenance",i])
