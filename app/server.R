@@ -6,7 +6,6 @@ server <- function(input, output, session) {
 #TODO:
 #conversion to imperial units
 #simplified duplicated chunks of code
-#USA: fixed price of Leaf and Polestar2
 #create README
 
 ##############################################################
