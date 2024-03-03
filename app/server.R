@@ -6,6 +6,8 @@ server <- function(input, output, session) {
 #TODO:
 #conversion to imperial units
 #simplified duplicated chunks of code
+#USA: fixed price of Leaf and Polestar2
+#create README
 
 ##############################################################
 ######################### WELCOME ############################
@@ -1103,9 +1105,12 @@ server <- function(input, output, session) {
     final_cost_plot <- reactive({
         df <- comparisonData$final_cost[c("Depreciation Cost", "Remaining Value", "Operational Cost", "Final Cost"),]
         colnames(df) <- make.unique(colnames(df))
+
         df_long <- melt(as.matrix(df[,-which(colnames(df)=="Breakdown")]), na.rm=T , varnames="Breakdown")
         colnames(df_long) <- c("Breakdown", "Model", "Cost")
+        
         df_long$Cost <- as.numeric(df_long$Cost)
+        df_long$Cost <- abs(df_long$Cost) #all positive values
         df_long$Breakdown <- factor(df_long$Breakdown, levels=c("Remaining Value", "Depreciation Cost", "Operational Cost", "Final Cost"))
         point_cols <- gg_color_hue(length(unique(df_long$Model))); names(point_cols) <- unique(df_long$Model)
 

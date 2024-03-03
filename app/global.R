@@ -36,7 +36,7 @@ compute_ownership_cost <- function(purchase_price, kms, kept_years, fuel_per_100
 	for (i in kept_years_vec){
 		yearly_spending[i] <- maintenance + kms * fuel_per_100km/100 * (fuel_rate/100 + fuel_increase/100 * (i-1)) 
 	}
-	cumulative_ownership_cost_over_years <- purchase_price + cumsum(yearly_spending)
+	cumulative_ownership_cost_over_years <- round(purchase_price + cumsum(yearly_spending),2)
     return(cumulative_ownership_cost_over_years)
 }
 
