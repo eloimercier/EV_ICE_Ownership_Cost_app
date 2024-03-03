@@ -338,7 +338,7 @@ server <- function(input, output, session) {
 
     output$add_new_carUI <- renderUI({
         req(input$region)
-        actionButton("add_new_data_btn", "Add new car")
+        actionButton("add_new_data_btn", "Add new car",  style="color: #fff; background-color: #337ab7; border-color: #2e6da4")
     })
 
 
@@ -435,9 +435,9 @@ server <- function(input, output, session) {
         ))
 
     	DT::datatable(car_list, filter = list(position = 'top'),selection = 'single', rownames=FALSE, extensions = 'Buttons', container = mouseover_info, 
-             options = list(pageLength = 20, lengthMenu = c(10, 20, 50, 100), dom = 'Bfrtlip', buttons = I('colvis'), columnDefs = list(list(width = '200px', targets = "_all"), list(targets = hide_columns, visible = FALSE))), escape = FALSE) %>% 
+             options = list(pageLength = 20, lengthMenu = c(10, 20, 50, 100), dom = 'rtlip', buttons = I('colvis'), columnDefs = list(list(width = '200px', targets = "_all"), list(targets = hide_columns, visible = FALSE))), escape = FALSE) %>% 
                  formatStyle(msrp_colname, background = styleColorBar(car_list[,msrp_colname], rgb(0,0.8,0,0.3)),  backgroundSize = '98% 88%',   backgroundRepeat = 'no-repeat',  backgroundPosition = 'left') %>% 
-                 formatStyle(purchase_price_colname, background = styleColorBar(car_list[,purchase_price_colname], rgb(0,0.8,0,0.3)),  backgroundSize = '98% 88%',   backgroundRepeat = 'no-repeat',  backgroundPosition = 'left')	
+                 formatStyle(purchase_price_colname, background = styleColorBar(car_list[,purchase_price_colname], rgb(0,0.8,0,0.3)),  backgroundSize = '98% 88%',   backgroundRepeat = 'no-repeat',  backgroundPosition = 'left')	#dom = 'Bfrtlip
     })
 
 ##############################################################

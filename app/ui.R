@@ -40,6 +40,7 @@ ui <- fluidPage(
                 ############################
                 tabPanel("Car List",value="car_list_tab", 
                     uiOutput("car_table_textUI"),
+                    div(style = "height:20px"),
                     uiOutput("add_new_carUI"),                        
                     dataTableOutput("car_table")
                 ), 
