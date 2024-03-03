@@ -17,14 +17,15 @@ ui <- fluidPage(
 ############################ LEFT PANEL ##########################
 ##############################################################
 
-    sidebarPanel(width=2, id="sidebar_panel",
-        actionButton("walkthroughBtn", label="Interactive Walkthrough", icon.library="font awesome",css.class='sc-button'),
-        HTML("<h3>User info:</h3>"),
-        uiOutput("user_infoUI"),
-        uiOutput("user_distanceUI"),
-        div(style = "height:20px"),
-        uiOutput("rebate_info")
-    ),
+        sidebarPanel(width=2, id="sidebar_panel",
+            actionButton("walkthroughBtn", label="Interactive Walkthrough", icon.library="font awesome",css.class='sc-button'),
+            HTML("<h3>User info:</h3>"),
+            uiOutput("user_infoUI"),
+            uiOutput("user_distanceUI"),
+            div(style = "height:20px"),
+            uiOutput("rebate_info"),
+            div(style = "height:20px")
+        ),
 
 ##############################################################
 ############################ BODY ############################
@@ -74,11 +75,16 @@ ui <- fluidPage(
                 ############################
 
                 tabPanel("Default Parameters", value="params_tab", 
-uiOutput("defaultParamTablesUI")
+                    uiOutput("defaultParamTablesUI")
                 )
 
 
             ) #end tabsetPanel
         ) #end mainPanel
-    ) #end sidebarLayout
+    ), #end sidebarLayout
+
+    div(
+        class = "footer",
+        includeHTML("footer.html")
+    )
 ) #end fluidPage

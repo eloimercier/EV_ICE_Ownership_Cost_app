@@ -4,7 +4,6 @@ server <- function(input, output, session) {
   verbose <- TRUE
   
 #TODO:
-#add time car list was last updated
 #conversion to imperial units
 #simplified duplicated chunks of code
 #Licence
@@ -184,8 +183,6 @@ server <- function(input, output, session) {
             generalModelData$unit_system <- "imperial"
         }
     })
-
-
 
 ######### Setup country specific data
 
