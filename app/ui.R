@@ -21,6 +21,7 @@ ui <- fluidPage(
         actionButton("walkthroughBtn", label="Interactive Walkthrough", icon.library="font awesome",css.class='sc-button'),
         HTML("<h3>User info:</h3>"),
         uiOutput("user_infoUI"),
+        uiOutput("user_distanceUI"),
         div(style = "height:20px"),
         uiOutput("rebate_info")
     ),

@@ -8,7 +8,6 @@ server <- function(input, output, session) {
 #conversion to imperial units
 #simplified duplicated chunks of code
 #Licence
-#reset car selection when country changes
 
 ##############################################################
 ######################### WELCOME ############################
@@ -28,19 +27,23 @@ server <- function(input, output, session) {
     # Available countries
     countryInfo <- list(
         USA = list(names_for_regions="State", is_federation=TRUE, tax_included=FALSE,
-                currency_name="USD", currency_symbol="$", currency_symbol_cent="¢", distance="kms",
-                gas_efficiency="mpg", gas_rate="¢/L", electricity_efficiency="m/kWh", electricity_rate="¢/kW", ice_maintenance=250, bev_maintenance=100),
+                currency_name="USD", currency_symbol="$", currency_symbol_cent="¢", 
+                default_unit_system="imperial", distance_unit="km", gas_efficiency_unit="L/100km", electricity_efficiency_unit="kWh/100kms", #change to distance_unit="miles", gas_efficiency_unit="mpg", electricity_efficiency_unit="m/kWh"  
+                 gas_rate="¢/L",  electricity_rate="¢/kW", ice_maintenance=250, bev_maintenance=100),
         Canada = list(names_for_regions="Province/Territory", is_federation=TRUE, tax_included=FALSE,
-                currency_name="CAD", currency_symbol="$", currency_symbol_cent="¢", distance="kms",
-                gas_efficiency="L/100kms", gas_rate="¢/L", electricity_efficiency="kWh/100kms", electricity_rate="¢/kW", ice_maintenance=350, bev_maintenance=150),
+                currency_name="CAD", currency_symbol="$", currency_symbol_cent="¢", 
+                default_unit_system="imperial", distance_unit="km", gas_efficiency_unit="L/100km", electricity_efficiency_unit="kWh/100kms", 
+                gas_rate="¢/L", electricity_rate="¢/kW", ice_maintenance=350, bev_maintenance=150),
         France = list(names_for_regions="Region", is_federation=FALSE, tax_included=TRUE,
-                currency_name="Euro", currency_symbol="€", currency_symbol_cent=" cent", distance="kms",
-                gas_efficiency="L/100kms", gas_rate=" cents/L", electricity_efficiency="kWh/100kms", electricity_rate=" cents/kW", ice_maintenance=250, bev_maintenance=100)
+                currency_name="Euro", currency_symbol="€", currency_symbol_cent=" cent",
+                default_unit_system="metrics", distance_unit="km", gas_efficiency_unit="L/100km", electricity_efficiency_unit="kWh/100kms",                 
+                gas_rate=" cents/L", electricity_rate=" cents/kW", ice_maintenance=250, bev_maintenance=100)
     )
 
-    countrySpecificData <- reactiveValues(names_for_regions=NA, is_federation=NA, tax_included=NA,
-                                        currency_name=NA, currency_symbol=NA, currency_symbol_cent=NA, distance=NA,
-                                        gas_efficiency=NA, gas_rate=NA, electricity_efficiency=NA, electricity_rate=NA,
+    countrySpecificData <- reactiveValues(names_for_regions=NA, is_federation=NA, tax_included=NA, 
+                                        currency_name=NA, currency_symbol=NA, currency_symbol_cent=NA, 
+                                        default_unit_system=NA, distance_unit=NA, gas_efficiency_unit=NA, electricity_efficiency_unit=NA,
+                                        gas_rate=NA, electricity_rate=NA,
                                         region_list=NA )
     generalModelData <- reactiveValues( federal_rebate=NA, federal_max_msrp=NA, region_rebate=NA, region_max_msrp=NA, tax=NA, gas_rate=NA, electricity_rate=NA, #region specific
                                         ice_efficiency=8, ice_maintenance=NA, bev_efficiency=15, bev_maintenance=NA, depreciation_rate=13, depreciation_value_10year=25, gas_increase=5, electricity_increase=1) #fixed
@@ -144,6 +147,7 @@ server <- function(input, output, session) {
 
     output$user_infoUI <- renderUI({
         country_list <- names(countryInfo)
+        distance_unit <- isolate(ifelse(input$use_metrics,"kms","miles"))
 
         tagList(
             selectizeInput('country', 'Country:', c(country_list),
@@ -156,9 +160,15 @@ server <- function(input, output, session) {
                     placeholder = 'Please select an option below',
                     onInitialize = I('function() { this.setValue(""); }')
                     )),
-            numericInput("yearly_distance", "Km driven yearly:", 10000, min = 1, max = 100000, step=1000),
-            numericInput("keep_years", "How many years do you intend to keep the car for:", 10, min = 1, max = 20, step=1)        
+            # HTML("<b>Unit system:</b>"),
+            # switchInput(inputId = "use_metrics",  value = TRUE, onLabel = "Metrics",  offLabel = "Imperial", label=NULL,labelWidth = "20px", size="default", onStatus = "success",  offStatus = "info", width="auto"),            
+            numericInput("keep_years", "How many years do you intend to keep the car for:", 10, min = 1, max = 20, step=1)
         )
+    })
+
+    output$user_distanceUI <- renderUI({
+        distance_unit <- "km" #ifelse(input$use_metrics,"kms","miles")
+        numericInput("yearly_distance", paste0("Distance driven yearly (",distance_unit,"):"), 10000, min = 1, max = 200000, step=1000)
     })
 
     observeEvent( countrySpecificData$region_list,{
@@ -166,6 +176,15 @@ server <- function(input, output, session) {
         region_list <- countrySpecificData$region_list
         updateSelectInput(session, "region", choices = region_list)
     })
+
+    observeEvent(input$use_metrics,{
+        if(input$use_metrics){
+            generalModelData$unit_system <- "metrics"
+        } else {
+            generalModelData$unit_system <- "imperial"
+        }
+    })
+
 
 
 ######### Setup country specific data
@@ -211,13 +230,6 @@ server <- function(input, output, session) {
         ########## set up other parameters
         generalModelData$ice_maintenance <- country_info$ice_maintenance
         generalModelData$bev_maintenance <- country_info$bev_maintenance
-
-        # ########## reset selection
-        #     updateSelectInput(session,"make1", selected = NULL)
-        #     updateSelectInput(session,"make2", selected = "Hyundai")
-        #     print("RESET")
-
-
     })
 
 
@@ -770,8 +782,8 @@ server <- function(input, output, session) {
         req(input$yearly_distance)
         #prepares the model variable table
         c0 <-c( paste0("Purchase Price (",countrySpecificData$currency_name,")"), 
-            paste0(firstup(countrySpecificData$distance)," driven (yearly)"), 
-            paste0("Efficency (",countrySpecificData$gas_efficiency," or ", countrySpecificData$electricity_efficiency,")"), 
+            paste0(firstup(countrySpecificData$distance_unit)," driven (yearly)"), 
+            paste0("Efficency (",countrySpecificData$gas_efficiency_unit," or ", countrySpecificData$electricity_efficiency_unit,")"), 
             paste0("Fuel/energy rate (",countrySpecificData$gas_rate," or ", countrySpecificData$electricity_rate,")"), 
             paste0("Yearly fuel/energy price increase (",countrySpecificData$currency_symbol_cent,")"), 
             paste0("Yearly Maintenance (",countrySpecificData$currency_name,")"),
@@ -843,7 +855,7 @@ server <- function(input, output, session) {
     #### CAR COMPARISON TABLE #### 
 
     observe({
-        req(input$keep_years)
+        req(input$region)
 
         #Cost over X years
         df <- data.frame(matrix(ncol=6, nrow=input$keep_years))
@@ -852,9 +864,9 @@ server <- function(input, output, session) {
         for (i in 2:6){
             df[,i] <- compute_ownership_cost(
                 purchase_price=model_variables_table["purchase_price",i], 
-                kms=input$yearly_distance, 
+                kms=convert_distance(input$yearly_distance, convert_from=generalModelData$unit_system, convert_to="metrics"), 
                 kept_years=input$keep_years, 
-                fuel_per_100km=model_variables_table["efficiency",i], 
+                fuel_per_100km=convert_gas_consumption(model_variables_table["efficiency",i], convert_from=generalModelData$unit_system, convert_to="metrics"), 
                 fuel_rate=model_variables_table["fuel_rate",i], 
                 fuel_increase=model_variables_table["fuel_price_increase",i], 
                 maintenance=model_variables_table["maintenance",i])
@@ -1285,9 +1297,9 @@ server <- function(input, output, session) {
         req(input$region)
 
         default_variables <- c(
-            "ICE efficiency"=paste(generalModelData$ice_efficiency, countrySpecificData$gas_efficiency),
+            "ICE efficiency"=paste(generalModelData$ice_efficiency, countrySpecificData$gas_efficiency_unit),
             "ICE maintenance (yearly)"=paste0(generalModelData$ice_maintenance, countrySpecificData$currency_symbol), 
-            "BEV efficiency"=paste(generalModelData$bev_efficiency, countrySpecificData$electricity_efficiency),
+            "BEV efficiency"=paste(generalModelData$bev_efficiency, countrySpecificData$electricity_efficiency_unit),
             "BEV maintenance (yearly)"=paste0(generalModelData$bev_maintenance, countrySpecificData$currency_symbol), 
             "Gas price increase (yearly)"=paste0(generalModelData$gas_increase, countrySpecificData$currency_symbol_cent),
             "Electricity price increase (yearly)"=paste0(generalModelData$electricity_increase, countrySpecificData$currency_symbol_cent),

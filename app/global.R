@@ -53,3 +53,42 @@ firstup <- function(x) {
 		x
 	}
 }
+
+
+convert_distance <- function(distance, convert_from=c("metrics", "imperial"), convert_to=c("metrics", "imperial")){
+#convert kilometers to miles and vice versa
+	if(convert_from[1]=="metrics" & convert_to[1]=="imperial"){
+		converted_distance <- distance * 0.621371
+		attr(converted_distance, "unit") <- "miles"
+	} else if(convert_from[1]=="imperial" & convert_to[1]=="metrics"){
+		converted_distance <- distance / 0.621371
+		attr(converted_distance, "unit") <- "kilometers"
+	} else if(convert_from[1]=="metrics" & convert_to[1]=="metrics"){
+		converted_distance <- distance
+		attr(converted_distance, "unit") <- "kilometers"
+	}else if(convert_from[1]=="imperial" & convert_to[1]=="imperial"){
+		converted_distance <- distance
+		attr(converted_distance, "unit") <- "miles"
+	}
+	return(converted_distance)
+}
+
+convert_gas_consumption <- function(gas_consumption, convert_from=c("metrics", "imperial"), convert_to=c("metrics", "imperial")){
+#convert L/100km to mpg and vice versa
+	if(convert_from[1]=="metrics" & convert_to[1]=="imperial"){
+		converted_consumption <- 235.215 / gas_consumption
+		attr(converted_consumption, "unit") <- "mpg"
+	} else if(convert_from[1]=="imperial" & convert_to[1]=="metrics"){
+		converted_consumption <- 235.215 / gas_consumption
+		attr(converted_consumption, "unit") <- "L/100km"		
+	} else if(convert_from[1]=="metrics" & convert_to[1]=="metrics"){
+		converted_consumption <- gas_consumption
+		attr(converted_consumption, "unit") <- "L/100km"
+	}else if(convert_from[1]=="imperial" & convert_to[1]=="imperial"){
+		converted_consumption <- gas_consumption
+		attr(converted_consumption, "unit") <- "mpg"
+	}
+	return(converted_consumption)
+}
+
+
