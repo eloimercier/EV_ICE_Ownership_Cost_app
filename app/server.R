@@ -6,7 +6,6 @@ server <- function(input, output, session) {
 #TODO:
 #conversion to imperial units
 #simplified duplicated chunks of code
-#Licence
 
 ##############################################################
 ######################### WELCOME ############################
@@ -248,7 +247,6 @@ server <- function(input, output, session) {
         rebate_info_federal <- rebate_table[rebate_table$Region == "Federal",,drop=FALSE]
         federal_rebate <- as.numeric(rebate_info_federal[1,"Maximum.amount"])
         federal_max_msrp <- as.numeric(rebate_info_federal[1,"If.MSRP.below..."])
-
         region_info_rebate <- rebate_table[rebate_table[,"Region"]==region_long,,drop=FALSE]
         region_rebate <- as.numeric(region_info_rebate[1,"Maximum.amount"])
         region_max_msrp <- as.numeric(region_info_rebate[1,"If.MSRP.below..."])
@@ -258,7 +256,7 @@ server <- function(input, output, session) {
         if(is.na(region_rebate)) region_rebate <- 0
 
         # if max amount not specified (i.e. NA), set max eligible MSRP to Infinite
-        # if(is.na(federal_max_msrp)) federal_max_msrp <- Inf
+        if(is.na(federal_max_msrp)) federal_max_msrp <- Inf
         if(is.na(region_max_msrp)) region_max_msrp <- Inf
 
         generalModelData$federal_rebate <- federal_rebate
