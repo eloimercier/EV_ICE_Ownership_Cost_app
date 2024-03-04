@@ -1,12 +1,11 @@
 
 server <- function(input, output, session) {
 
-  verbose <- TRUE
+  verbose <- FALSE
   
 #TODO:
 #conversion to imperial units
-#simplified duplicated chunks of code
-#create README
+#simplify duplicated chunks of code
 
 ##############################################################
 ######################### WELCOME ############################
